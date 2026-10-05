@@ -2,13 +2,29 @@ import random
 
 
 class HyperspaceManager:
-    FAILURE_CHANCE: float = 0.02
-    INCREMENT: float = 0.003
+    DURATION: int = 48
+
+    BASE_FAILURE_CHANCE: float = 0.04
+    FAILURE_PER_ASTEROID: float = 0.006
+    MAX_FAILURE_CHANCE: float = 0.25
 
     def __init__(self) -> None:
-        self.uses: int
+        self.timer: int = 0
 
-        self.reset()
+    @property
+    def is_active(self) -> bool:
+        return self.timer > 0
+
+    def enter(self) -> None:
+        self.timer = self.DURATION
+
+    def tick(self) -> bool:
+        if self.timer <= 0:
+            return False
+
+        self.timer -= 1
+
+        return self.timer == 0
 
     def teleport(
         self,
@@ -17,12 +33,13 @@ class HyperspaceManager:
     ) -> tuple[float, float]:
         return (random.uniform(0, width), random.uniform(0, height))
 
-    def should_explode(self) -> bool:
-        probability = self.FAILURE_CHANCE + self.uses * self.INCREMENT
+    def failure_chance(self, asteroid_count: int) -> float:
+        chance = self.BASE_FAILURE_CHANCE + asteroid_count * self.FAILURE_PER_ASTEROID
 
-        self.uses += 1
+        return min(chance, self.MAX_FAILURE_CHANCE)
 
-        return random.random() < probability
+    def should_explode(self, asteroid_count: int) -> bool:
+        return random.random() < self.failure_chance(asteroid_count)
 
     def reset(self) -> None:
-        self.uses = 0
+        self.timer = 0

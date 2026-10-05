@@ -30,11 +30,11 @@ class ShipExplosionEffect(ExplosionEffect):
         sin_a = float(np.sin(radians))
 
         for p1, p2 in ship_lines:
-            x1 = x + (p1[0] * cos_a + p1[1] * sin_a)
-            y1 = y - (p1[0] * -sin_a + p1[1] * cos_a)
+            x1 = x + (p1[0] * cos_a - p1[1] * sin_a)
+            y1 = y + (p1[0] * sin_a + p1[1] * cos_a)
 
-            x2 = x + (p2[0] * cos_a + p2[1] * sin_a)
-            y2 = y - (p2[0] * -sin_a + p2[1] * cos_a)
+            x2 = x + (p2[0] * cos_a - p2[1] * sin_a)
+            y2 = y + (p2[0] * sin_a + p2[1] * cos_a)
 
             center_x = (x1 + x2) / 2
             center_y = (y1 + y2) / 2
