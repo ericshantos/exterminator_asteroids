@@ -36,7 +36,7 @@ class AsteroidEnv(gym.Env[np.ndarray, int]):
         if render_mode == "human":
             self.renderer: Renderer = Renderer(self.world)
 
-        self.reward_system: RewardFunction = RewardFunction()
+        self.reward_system: RewardFunction = RewardFunction(self.space)
 
         self.action_space: spaces.Discrete = spaces.Discrete(ActionSpace.N_ACTIONS)
 
