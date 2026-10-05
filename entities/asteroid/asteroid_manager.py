@@ -1,10 +1,8 @@
-import random
-
-import numpy as np
 import pygame
 
-from .asteroid import Asteroid
 from env.toroidal_space import ToroidalSpace
+
+from .asteroid import Asteroid
 
 
 class AsteroidManager:
@@ -14,33 +12,42 @@ class AsteroidManager:
         self.space = space
 
         self.asteroids: list[Asteroid] = []
+        self.debris: list[Asteroid] = []
 
     def spawn_wave(
-        self, quantity: int, player_x: float, player_y: float, min_distance: int = 400
+        self,
+        quantity: int,
+        player_x: float,
+        player_y: float,
+        min_distance: float = 150.0,
     ) -> None:
         self.asteroids.clear()
 
         while len(self.asteroids) < quantity:
-            x = random.randint(0, self.space.width)
-            y = random.randint(0, self.space.height)
+            asteroid = Asteroid(space=self.space)
 
-            dx = x - player_x
-            dy = y - player_y
+            distance = self.space.distance(
+                player_x, player_y, asteroid.x, asteroid.y
+            )
 
-            distance: float = float(np.hypot(dx, dy))
-
-            if distance < min_distance:
+            if distance < min_distance + asteroid.radius:
                 continue
 
-            self.asteroids.append(
-                Asteroid(space=self.space, x=x, y=y)
-            )
+            self.asteroids.append(asteroid)
 
     def update(self) -> None:
         for asteroid in self.asteroids:
             asteroid.update()
 
+        for fragment in self.debris:
+            fragment.update()
+
+        self.debris = [d for d in self.debris if not d.explosion_finished]
+
     def draw(self, surface: pygame.Surface) -> None:
+        for fragment in self.debris:
+            fragment.draw(surface)
+
         for asteroid in self.asteroids:
             asteroid.draw(surface)
 
@@ -50,7 +57,7 @@ class AsteroidManager:
 
         available_slots = self.MAX_ASTEROIDS - len(self.asteroids)
 
-        quantity = min(2, available_slots)
+        quantity = max(0, min(2, available_slots))
 
         return asteroid.create_children(quantity)
 
@@ -63,6 +70,13 @@ class AsteroidManager:
         children = self.split(asteroid)
 
         self.asteroids.extend(children)
+
+        asteroid.trigger_explosion()
+        self.debris.append(asteroid)
+
+    def clear(self) -> None:
+        self.asteroids.clear()
+        self.debris.clear()
 
     @property
     def count(self) -> int:
