@@ -11,7 +11,8 @@ class ScreenConfig:
 
 @dataclass
 class GameConfig:
-    max_lives: int
+    starting_lives: int
+    extra_life_score: int
     initial_asteroids: int
     max_asteroids: int
     max_steps_per_episode: int
