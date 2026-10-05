@@ -7,6 +7,8 @@ from env.toroidal_space import ToroidalSpace
 
 
 class SaucerManager:
+    SMALL_ONLY_SCORE: int = 40000
+
     def __init__(self, space: ToroidalSpace) -> None:
         self.space = space
 
@@ -25,6 +27,9 @@ class SaucerManager:
         return 3
 
     def _small_saucer_probability(self, score: int) -> float:
+        if score >= self.SMALL_ONLY_SCORE:
+            return 1.0
+
         level = self._difficulty_level(score)
 
         match level:
@@ -91,6 +96,9 @@ class SaucerManager:
 
         if self.saucer and self.saucer.can_be_removed:
             self.saucer = None
+
+    def reset(self) -> None:
+        self.saucer = None
 
     def draw(self, surface: pygame.Surface) -> None:
         if self.saucer:
