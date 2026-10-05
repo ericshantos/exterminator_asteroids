@@ -3,43 +3,35 @@ import pygame
 
 
 class Bullet:
-    RADIUS: int = 3
+    RADIUS: int = 2
+    SPEED: float = 10.0
     MAX_LIFETIME: int = 60
 
-    def __init__(self, x: float, y: float, angle: float) -> None:
+    def __init__(
+        self,
+        x: float,
+        y: float,
+        angle: float,
+        inherit_vx: float = 0.0,
+        inherit_vy: float = 0.0,
+    ) -> None:
         self.x: float = x
         self.y: float = y
 
-        self.speed: float = 10.0
-
         radians: float = float(np.radians(angle))
-        self.velocity_x: float = float(np.sin(radians) * self.speed)
-        self.velocity_y: float = float(np.cos(radians) * self.speed)
+        self.velocity_x: float = float(np.sin(radians)) * self.SPEED + inherit_vx
+        self.velocity_y: float = -float(np.cos(radians)) * self.SPEED + inherit_vy
 
         self.lifetime: int = 0
-        self.max_lifetime: int = 60
 
     def update(self, width: int, height: int) -> None:
-        self.x += self.velocity_x
-        self.y -= self.velocity_y
+        self.x = (self.x + self.velocity_x) % width
+        self.y = (self.y + self.velocity_y) % height
 
         self.lifetime += 1
 
-        self.wrap_around(width, height)
-
     def is_alive(self) -> bool:
         return self.lifetime < self.MAX_LIFETIME
-
-    def wrap_around(self, width: int, height: int) -> None:
-        if self.x < -self.RADIUS:
-            self.x = width + self.RADIUS
-        elif self.x > width + self.RADIUS:
-            self.x = -self.RADIUS
-
-        if self.y < -self.RADIUS:
-            self.y = height + self.RADIUS
-        elif self.y > height + self.RADIUS:
-            self.y = -self.RADIUS
 
     def draw(self, screen: pygame.Surface) -> None:
         pygame.draw.circle(
