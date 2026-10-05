@@ -1,8 +1,7 @@
-import numpy as np
-
-from entities import Asteroid, AsteroidManager, Bullet, Player, Saucer
+from entities import Asteroid, AsteroidManager, Bullet, BulletManager, Player, Saucer
 
 from .score_manager import ScoreManager
+from .toroidal_space import ToroidalSpace
 
 
 class CollisionManager:
@@ -11,10 +10,12 @@ class CollisionManager:
         player: Player,
         asteroid_manager: AsteroidManager,
         score_manager: ScoreManager,
+        space: ToroidalSpace,
     ) -> None:
         self.player = player
         self.asteroid_manager = asteroid_manager
         self.score_manager = score_manager
+        self.space = space
 
         self.reset()
 
@@ -22,55 +23,54 @@ class CollisionManager:
         self.asteroids_destroyed = 0
         self.accuracy_hits = 0
 
-    def check_saucer_player_collision(self, saucer: Saucer) -> None:
-        if not self.player.is_alive:
-            return
+    def _touching(
+        self, ax: float, ay: float, a_radius: float, bx: float, by: float, b_radius: float
+    ) -> bool:
+        return self.space.distance(ax, ay, bx, by) <= a_radius + b_radius
 
-        if not saucer.is_alive:
-            return
+    def _bullets_vs_asteroids(self, bullet_manager: BulletManager) -> list[Asteroid]:
+        hit: list[Asteroid] = []
+        spent: list[Bullet] = []
 
-        dx = saucer.x - self.player.x
-        dy = saucer.y - self.player.y
+        for bullet in list(bullet_manager.bullets):
+            for asteroid in self.asteroid_manager.asteroids:
+                if asteroid in hit:
+                    continue
 
-        distance = float(np.hypot(dx, dy))
+                if self._touching(
+                    asteroid.x, asteroid.y, asteroid.radius,
+                    bullet.x, bullet.y, bullet.RADIUS,
+                ):
+                    hit.append(asteroid)
+                    spent.append(bullet)
+                    break
 
-        collision_distance = saucer.radius + self.player.RADIUS
+        for bullet in spent:
+            bullet_manager.remove(bullet)
 
-        if distance <= collision_distance:
-            self.player.die()
+        for asteroid in hit:
+            self.asteroid_manager.remove(asteroid)
 
-    def check_saucer_bullets_player_collision(self, saucer: Saucer) -> None:
-        if not self.player.is_alive:
-            return
+        return hit
 
-        for bullet in saucer.bullet_manager.bullets:
-            dx = self.player.x - bullet.x
-            dy = self.player.y - bullet.y
+    def check_bullet_asteroid_collisions(self) -> None:
+        for asteroid in self._bullets_vs_asteroids(self.player.bullet_manager):
+            self.score_manager.add(Asteroid.points(asteroid.size))
 
-            distance = float(np.hypot(dx, dy))
+            self.asteroids_destroyed += 1
+            self.accuracy_hits += 1
 
-            collision_distance = bullet.RADIUS + self.player.RADIUS
-
-            if distance <= collision_distance:
-                self.player.die()
-
-                saucer.bullet_manager.remove(bullet)
-
-                return
+    def check_saucer_bullet_asteroid_collisions(self, saucer: Saucer) -> None:
+        self._bullets_vs_asteroids(saucer.bullet_manager)
 
     def check_bullet_saucer_collision(self, saucer: Saucer) -> None:
         if not saucer.is_alive:
             return
 
         for bullet in list(self.player.bullet_manager.bullets):
-            dx = saucer.x - bullet.x
-            dy = saucer.y - bullet.y
-
-            distance = float(np.hypot(dx, dy))
-
-            collision_distance = saucer.radius + bullet.RADIUS
-
-            if distance <= collision_distance:
+            if self._touching(
+                saucer.x, saucer.y, saucer.radius, bullet.x, bullet.y, bullet.RADIUS
+            ):
                 self.player.bullet_manager.remove(bullet)
 
                 saucer.die()
@@ -81,89 +81,78 @@ class CollisionManager:
 
                 return
 
+    def check_saucer_bullets_player_collision(self, saucer: Saucer) -> None:
+        if not self.player.is_active:
+            return
+
+        for bullet in list(saucer.bullet_manager.bullets):
+            if self._touching(
+                self.player.x, self.player.y, self.player.RADIUS,
+                bullet.x, bullet.y, bullet.RADIUS,
+            ):
+                saucer.bullet_manager.remove(bullet)
+
+                self.player.die()
+
+                return
+
+    def check_player_asteroid_collisions(self) -> None:
+        if not self.player.is_active:
+            return
+
+        for asteroid in self.asteroid_manager.asteroids:
+            if self._touching(
+                asteroid.x, asteroid.y, asteroid.radius,
+                self.player.x, self.player.y, self.player.RADIUS,
+            ):
+                self.score_manager.add(Asteroid.points(asteroid.size))
+                self.asteroids_destroyed += 1
+
+                self.asteroid_manager.remove(asteroid)
+
+                self.player.die()
+
+                return
+
+    def check_saucer_player_collision(self, saucer: Saucer) -> None:
+        if not self.player.is_active or not saucer.is_alive:
+            return
+
+        if self._touching(
+            saucer.x, saucer.y, saucer.radius,
+            self.player.x, self.player.y, self.player.RADIUS,
+        ):
+            self.score_manager.add(Saucer.points(saucer.size_type))
+
+            saucer.die()
+
+            self.player.die()
+
     def check_saucer_asteroid_collision(self, saucer: Saucer) -> None:
         if not saucer.is_alive:
             return
 
         for asteroid in self.asteroid_manager.asteroids:
-            dx = asteroid.x - saucer.x
-            dy = asteroid.y - saucer.y
+            if self._touching(
+                asteroid.x, asteroid.y, asteroid.radius,
+                saucer.x, saucer.y, saucer.radius,
+            ):
+                self.asteroid_manager.remove(asteroid)
 
-            distance = float(np.hypot(dx, dy))
-
-            collision_distance = asteroid.radius + saucer.radius
-
-            if distance <= collision_distance:
                 saucer.die()
 
                 return
 
-    def check_player_asteroid_collisions(self) -> None:
-        if not self.player.is_alive:
-            return
-
-        for asteroid in self.asteroid_manager.asteroids:
-            dx = asteroid.x - self.player.x
-            dy = asteroid.y - self.player.y
-
-            distance = float(np.hypot(dx, dy))
-
-            collision_distance = asteroid.radius + self.player.RADIUS
-
-            if distance <= collision_distance:
-                self.player.die()
-
-                return
-
-    def check_bullet_asteroid_collisions(self) -> None:
-        bullets_to_remove: set[Bullet] = set()
-        asteroids_to_remove: set[Asteroid] = set()
-
-        for bullet in self.player.bullet_manager.bullets:
-            if bullet in bullets_to_remove:
-                continue
-
-            for asteroid in self.asteroid_manager.asteroids:
-                if asteroid in asteroids_to_remove:
-                    continue
-
-                dx = asteroid.x - bullet.x
-                dy = asteroid.y - bullet.y
-
-                distance = float(np.hypot(dx, dy))
-
-                collision_distance = asteroid.radius + bullet.RADIUS
-
-                if distance <= collision_distance:
-                    bullets_to_remove.add(bullet)
-
-                    asteroids_to_remove.add(asteroid)
-
-                    self.score_manager.add(Asteroid.points(asteroid.size))
-
-                    self.asteroids_destroyed += 1
-                    self.accuracy_hits += 1
-
-                    break
-
-        for bullet in bullets_to_remove:
-            self.player.bullet_manager.remove(bullet)
-
-        for asteroid in asteroids_to_remove:
-            self.asteroid_manager.remove(asteroid)
-
     def update(self, saucer: Saucer | None) -> None:
         self.check_bullet_asteroid_collisions()
 
+        if saucer is not None:
+            self.check_bullet_saucer_collision(saucer)
+            self.check_saucer_bullet_asteroid_collisions(saucer)
+            self.check_saucer_bullets_player_collision(saucer)
+
         self.check_player_asteroid_collisions()
 
-        if saucer is None:
-            return
-
-        self.check_bullet_saucer_collision(saucer)
-
-        self.check_saucer_player_collision(saucer)
-
-        self.check_saucer_bullets_player_collision(saucer)
-
-        self.check_saucer_asteroid_collision(saucer)
+        if saucer is not None:
+            self.check_saucer_player_collision(saucer)
+            self.check_saucer_asteroid_collision(saucer)
