@@ -22,14 +22,14 @@ def evaluate(
     render: bool = True,
     seed: int | None = None,
 ):
-    env = make_env(render_mode="human" if render else None)
-
     path = model_path or MODEL_PATHS[algo]
 
     if algo == "ppo":
         model = PPO.load(path, device="cpu")
     else:
         model = DQN.load(path)
+
+    env = make_env(render_mode="human" if render else None)
 
     scores = []
     survival_times = []
