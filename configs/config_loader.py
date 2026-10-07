@@ -4,7 +4,7 @@ from typing import Any, cast
 import yaml
 from dacite import from_dict
 
-from .schema import ApolloConfig
+from .schema import ExterminatorConfig
 
 
 def load_yaml(filename: str | Path) -> dict[str, Any]:
@@ -16,7 +16,7 @@ def load_yaml(filename: str | Path) -> dict[str, Any]:
 
 class ConfigLoader:
     @staticmethod
-    def load() -> ApolloConfig:
+    def load() -> ExterminatorConfig:
         path = Path(__file__).parent / "yaml"
 
         data = {}
@@ -26,4 +26,6 @@ class ConfigLoader:
         data.update(load_yaml(path / "ppo.yaml"))
         data.update(load_yaml(path / "training.yaml"))
 
-        return cast(ApolloConfig, from_dict(data_class=ApolloConfig, data=data))
+        return cast(
+            ExterminatorConfig, from_dict(data_class=ExterminatorConfig, data=data)
+        )

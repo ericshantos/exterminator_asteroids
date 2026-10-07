@@ -2,7 +2,7 @@ screen:
   width: 1024
   height: 768
   fps: 60
-  window_title: "Asteroid - Project Apollo"
+  window_title: "Exterminator Asteroids"
 
 game:
   starting_lives: 3

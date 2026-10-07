@@ -1,5 +1,5 @@
 [project]
-name = "project-apollo"
+name = "exterminator_asteroids"
 version = "0.1.0"
 description = "Asteroids Reinforcement Learning Environment"
 readme = "README.md"

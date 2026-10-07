@@ -3,7 +3,7 @@ from pathlib import Path
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import SubprocVecEnv, VecNormalize
 
-from ..callbacks import ApolloMetricsCallback
+from ..callbacks import ExterminatorMetricsCallback
 
 from configs.schema import PPOConfig
 from env.observation import Observation
@@ -50,10 +50,12 @@ class PPOAgent:
         self,
         total_timesteps: int,
     ) -> None:
-        callback = ApolloMetricsCallback()
+        callback = ExterminatorMetricsCallback()
 
         self._model.learn(
-            total_timesteps=total_timesteps, callback=callback, tb_log_name="apollo_ppo"
+            total_timesteps=total_timesteps,
+            callback=callback,
+            tb_log_name="exterminator_ppo",
         )
 
     def act(self, observation: Observation, deterministic: bool = True) -> int:

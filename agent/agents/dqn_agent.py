@@ -2,7 +2,7 @@ from pathlib import Path
 
 from stable_baselines3 import DQN
 
-from ..callbacks import ApolloMetricsCallback
+from ..callbacks import ExterminatorMetricsCallback
 
 import gymnasium as gym
 import numpy as np
@@ -50,10 +50,12 @@ class DQNAgent:
         self,
         total_timesteps: int,
     ) -> None:
-        callback = ApolloMetricsCallback()
+        callback = ExterminatorMetricsCallback()
 
         self._model.learn(
-            total_timesteps=total_timesteps, callback=callback, tb_log_name="apollo_dqn"
+            total_timesteps=total_timesteps,
+            callback=callback,
+            tb_log_name="exterminator_dqn",
         )
 
     def act(self, observation: Observation, deterministic: bool = True) -> int:

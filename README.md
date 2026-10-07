@@ -1,13 +1,11 @@
-# Projeto Apollo
+# Exterminator Asteroids
 
 Ambiente de Aprendizado por Reforço que reproduz o **Asteroids** do arcade da Atari
 (1979), feito em Python com Pygame e exposto como um ambiente
 [Gymnasium](https://gymnasium.farama.org/). O repositório inclui um agente DQN
 (Stable-Baselines3) para treinar e avaliar políticas no jogo.
 
-O ambiente foi auditado e ajustado para seguir as regras do arcade original. Os
-detalhes estão em [`RELATORIO_PROJETO_APOLLO_ASTEROIDS_1979.pdf`](RELATORIO_PROJETO_APOLLO_ASTEROIDS_1979.pdf)
-e em [`RELATORIO_FIDELIDADE_ASTEROIDS_1979.txt`](RELATORIO_FIDELIDADE_ASTEROIDS_1979.txt).
+O ambiente foi auditado e ajustado para seguir as regras do arcade original.
 
 ## Sumário
 
@@ -27,8 +25,8 @@ e em [`RELATORIO_FIDELIDADE_ASTEROIDS_1979.txt`](RELATORIO_FIDELIDADE_ASTEROIDS_
   `pyyaml` (o PyTorch é instalado junto com o Stable-Baselines3)
 
 ```bash
-git clone <url-do-repositorio> project-apollo
-cd project-apollo
+git clone https://github.com/ericshantos/exterminator_asteroids.git
+cd exterminator_asteroids
 
 python -m venv .venv
 source .venv/bin/activate
@@ -58,7 +56,7 @@ pip install black ruff mypy pytest pre-commit types-PyYAML
 python -m training.run_dqn
 ```
 
-O modelo é salvo em `models/apollo_dqn.zip` e as métricas do TensorBoard ficam em
+O modelo é salvo em `models/exterminator_dqn.zip` e as métricas do TensorBoard ficam em
 `logs/tensorboard`:
 
 ```bash
@@ -194,7 +192,7 @@ A configuração é carregada uma vez, na importação, e fica disponível em
 ## Estrutura do projeto
 
 ```
-project-apollo/
+exterminator_asteroids/
 ├── agent/
 │   ├── agents/dqn_agent.py        # DQN (Stable-Baselines3)
 │   ├── callbacks/                 # métricas do jogo no TensorBoard

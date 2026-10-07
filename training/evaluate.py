@@ -9,8 +9,8 @@ import numpy as np
 
 
 MODEL_PATHS = {
-    "dqn": Path("models/apollo_dqn.zip"),
-    "ppo": Path("models/apollo_ppo.zip"),
+    "dqn": Path("models/exterminator_dqn.zip"),
+    "ppo": Path("models/exterminator_ppo.zip"),
 }
 EPISODES = 20
 
