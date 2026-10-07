@@ -57,6 +57,7 @@ class DQNConfig:
     batch_size: int
     learning_starts: int
     train_freq: int
+    gradient_steps: int
     target_update_interval: int
     total_timesteps: int
     exploration: ExplorationConfig
