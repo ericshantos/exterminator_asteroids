@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Protocol, cast
 
 import gymnasium as gym
 import numpy as np
@@ -16,6 +16,12 @@ _RELEASED: dict[Action, Action] = {
 }
 
 
+class Observable(Protocol):
+    skip_observation: bool
+
+    def observe(self) -> np.ndarray: ...
+
+
 class FrameSkip(gym.Wrapper[np.ndarray, int, np.ndarray, int]):
     def __init__(self, env: gym.Env[np.ndarray, int], skip: int = 4) -> None:
         if skip < 1:
@@ -31,16 +37,23 @@ class FrameSkip(gym.Wrapper[np.ndarray, int, np.ndarray, int]):
         first = Action(int(action))
         held = _RELEASED.get(first, first)
 
+        base = cast(Observable, self.env.unwrapped)
+
         total_reward = 0.0
 
-        for frame in range(self.skip):
-            obs, reward, terminated, truncated, info = self.env.step(
-                first if frame == 0 else held
-            )
+        base.skip_observation = True
 
-            total_reward += float(reward)
+        try:
+            for frame in range(self.skip):
+                _, reward, terminated, truncated, info = self.env.step(
+                    first if frame == 0 else held
+                )
 
-            if terminated or truncated:
-                break
+                total_reward += float(reward)
 
-        return obs, total_reward, terminated, truncated, info
+                if terminated or truncated:
+                    break
+        finally:
+            base.skip_observation = False
+
+        return base.observe(), total_reward, terminated, truncated, info
