@@ -11,17 +11,22 @@ class ScreenConfig:
 
 @dataclass
 class GameConfig:
-    max_lives: int
+    starting_lives: int
+    extra_life_score: int
     initial_asteroids: int
     max_asteroids: int
-    max_steps_per_episode: int
 
 
 @dataclass
 class RewardConfig:
-    player_died: float
     survive_step: float
-    idle_penalty: float
+    score_scale: float
+    life_lost: float
+    game_over: float
+    hyperspace_cost: float
+    missed_shot: float
+    danger_shaping: float
+    aim_shaping: float
 
 
 @dataclass
@@ -33,9 +38,8 @@ class EnvironmentConfig:
 
 @dataclass
 class RLConfig:
-    observation_radius: float
     max_episode_steps: int
-    normalize_observation: bool
+    frame_skip: int
 
 
 @dataclass
@@ -53,9 +57,26 @@ class DQNConfig:
     batch_size: int
     learning_starts: int
     train_freq: int
+    gradient_steps: int
     target_update_interval: int
     total_timesteps: int
     exploration: ExplorationConfig
+
+
+@dataclass
+class PPOConfig:
+    n_envs: int
+    learning_rate: float
+    gamma: float
+    gae_lambda: float
+    clip_range: float
+    n_steps: int
+    batch_size: int
+    epochs: int
+    ent_coef: float
+    vf_coef: float
+    max_grad_norm: float
+    total_timesteps: int
 
 
 @dataclass
@@ -74,4 +95,5 @@ class ApolloConfig:
     reward: RewardConfig
     rl: RLConfig
     dqn: DQNConfig
+    ppo: PPOConfig
     training: TrainingConfig

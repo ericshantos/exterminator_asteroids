@@ -6,117 +6,97 @@ from typing import Literal, cast
 import numpy as np
 import pygame
 
-from configs import cfg
-
-from ..ship import Saucer
-from .typed import Particle
 from env.toroidal_space import ToroidalSpace
+
+from .typed import Particle
+
+AsteroidSize = Literal[1, 2, 3]
+
+_SHAPES: tuple[tuple[tuple[float, float], ...], ...] = (
+    ((-4, -2), (-2, -4), (0, -2), (2, -4), (4, -2), (3, 0),
+     (4, 2), (1, 4), (-2, 4), (-4, 2)),
+    ((-4, -2), (-2, -4), (2, -4), (4, -2), (4, -1), (1, 0),
+     (4, 2), (2, 4), (1, 3), (-2, 4), (-4, 1), (-3, 0)),
+    ((-4, -2), (-1, -4), (2, -4), (4, -1), (4, 1), (2, 4),
+     (0, 4), (0, 1), (-2, 4), (-4, 1), (-2, -1)),
+    ((-4, -1), (-2, -4), (0, -3), (2, -4), (4, -2), (2, -1),
+     (4, 1), (2, 4), (-1, 3), (-2, 4), (-4, 2)),
+)
 
 
 class Asteroid:
-    LARGE_SPEED: float = 1.5
-    MEDIUM_SPEED: float = 2.8
-    SMALL_SPEED: float = 4.2
+    _RADIUS: dict[int, float] = {3: 40.0, 2: 20.0, 1: 10.0}
 
-    MAX_RADIUS: float = 70.0
+    _SPEED_RANGE: dict[int, tuple[float, float]] = {
+        3: (0.75, 1.5),
+        2: (1.2, 2.8),
+        1: (1.8, 4.2),
+    }
 
-    MAX_SPEED: float = SMALL_SPEED
+    MAX_RADIUS: float = _RADIUS[3]
+    MAX_SPEED: float = _SPEED_RANGE[1][1]
 
     _ASTEROID_POINT: dict[int, int] = {1: 100, 2: 50, 3: 20}
 
     def __init__(
         self,
         space: ToroidalSpace,
-        size: Literal[1, 2, 3] = 3,
+        size: AsteroidSize = 3,
         x: float | None = None,
         y: float | None = None,
+        velocity_x: float | None = None,
+        velocity_y: float | None = None,
     ) -> None:
-        self.size = size
-        self.radius: float
-
-        if self.size == 3:
-            self.radius = 70
-        elif self.size == 2:
-            self.radius = 25
-        else:
-            self.radius = 8
+        self.space = space
+        self.size: AsteroidSize = size
+        self.radius: float = self._RADIUS[size]
 
         self.is_alive: bool = True
         self.particles: list[Particle] = []
 
-        self.velocity_x: float
-        self.velocity_y: float
-
-        self.space = space
-
         if x is None or y is None:
-            self.x, self.y = self._generate_edge_position()
-            self.velocity_x, self.velocity_y = self._generate_inward_velocity()
-        else:
-            self.x = x
-            self.y = y
-            angle = random.uniform(0, np.pi * 2)
+            x, y = self._generate_edge_position()
 
-            speed_multiplier = {
-                3: self.LARGE_SPEED,
-                2: self.MEDIUM_SPEED,
-                1: self.SMALL_SPEED,
-            }[self.size]
+        self.x: float = space.wrap_x(x)
+        self.y: float = space.wrap_y(y)
 
-            self.velocity_x = np.cos(angle) * speed_multiplier
-            self.velocity_y = np.sin(angle) * speed_multiplier
+        if velocity_x is None or velocity_y is None:
+            velocity_x, velocity_y = self._random_velocity()
 
-        base_points = [
-            (0.0, -1.0),
-            (0.5, -0.8),
-            (1.0, -0.3),
-            (0.8, 0.2),
-            (1.0, 0.6),
-            (0.4, 1.0),
-            (-0.2, 0.8),
-            (-0.6, 1.0),
-            (-1.0, 0.4),
-            (-0.8, -0.3),
-            (-1.0, -0.7),
-            (-0.4, -0.8),
+        self.velocity_x: float = velocity_x
+        self.velocity_y: float = velocity_y
+
+        scale = self.radius / 4
+        template = random.choice(_SHAPES)
+        self.shape: list[tuple[float, float]] = [
+            (px * scale, py * scale) for px, py in template
         ]
 
-        self.points: list[tuple[float, float]] = []
-        for px, py in base_points:
-            jitter_x = random.uniform(-0.12, 0.12)
-            jitter_y = random.uniform(-0.12, 0.12)
-            self.points.append(
-                ((px + jitter_x) * self.radius, (py + jitter_y) * self.radius)
-            )
-
-        self._asteroids_point: dict[int, int] = {1: 100, 2: 50, 3: 20}
-
-        self.saucer: Saucer | None = None
-        self.last_saucer_spawn = pygame.time.get_ticks()
-        self.saucer_spawn_interval = 15000
-
     def _generate_edge_position(self) -> tuple[float, float]:
-        edge = random.choice(["LEFT", "RIGHT", "TOP", "BOTTOM"])
+        if random.random() < 0.5:
+            return 0.0, random.uniform(0, self.space.height)
 
-        if edge == "LEFT":
-            return -self.radius, random.uniform(0, self.space.height)
+        return random.uniform(0, self.space.width), 0.0
 
-        if edge == "RIGHT":
-            return self.space.width + self.radius, random.uniform(0, self.space.height)
+    def _random_velocity(self) -> tuple[float, float]:
+        low, high = self._SPEED_RANGE[self.size]
 
-        if edge == "TOP":
-            return random.uniform(0, self.space.width), -self.radius
+        angle = random.uniform(0, 2 * np.pi)
+        speed = random.uniform(low, high)
 
-        return random.uniform(0, self.space.width), self.space.height + self.radius
+        return float(np.cos(angle)) * speed, float(np.sin(angle)) * speed
 
-    def _generate_inward_velocity(self) -> tuple[float, float]:
-        target_x = random.uniform(self.space.width * 0.2, self.space.width * 0.8)
-        target_y = random.uniform(self.space.height * 0.2, self.space.height * 0.8)
-        dx, dy = target_x - self.x, target_y - self.y
-        distance: float = float(np.hypot(dx, dy))
+    def _clamp_speed(self, vx: float, vy: float) -> tuple[float, float]:
+        low, high = self._SPEED_RANGE[self.size]
 
-        base_speed = random.uniform(1.0, self.MAX_SPEED)
-        return (dx / distance) * base_speed, (dy / distance) * base_speed
+        speed = float(np.hypot(vx, vy))
+
+        if speed < 1e-6:
+            return self._random_velocity()
+
+        clamped = min(max(speed, low), high)
+
+        return vx / speed * clamped, vy / speed * clamped
 
     def trigger_explosion(self) -> None:
         self.is_alive = False
@@ -133,6 +113,10 @@ class Asteroid:
                 }
             )
 
+    @property
+    def explosion_finished(self) -> bool:
+        return all(p["alpha"] <= 0 for p in self.particles)
+
     def update(self) -> None:
         if not self.is_alive:
             for p in self.particles:
@@ -141,25 +125,30 @@ class Asteroid:
                 p["alpha"] = max(0, p["alpha"] - 6)
             return
 
-        self.x += self.velocity_x
-        self.y += self.velocity_y
-
-        self.x = self.space.wrap_x(self.x, self.radius)
-        self.y = self.space.wrap_y(self.y, self.radius)
+        self.x = self.space.wrap_x(self.x + self.velocity_x)
+        self.y = self.space.wrap_y(self.y + self.velocity_y)
 
     def create_children(self, quantity: int) -> list[Asteroid]:
         if self.size == 1:
             return []
 
-        return [
-            Asteroid(
-                space=self.space,
-                size=cast(Literal[1, 2, 3], self.size - 1),
-                x=self.x,
-                y=self.y,
+        child_size = cast(AsteroidSize, self.size - 1)
+
+        children = []
+
+        for _ in range(quantity):
+            child = Asteroid(space=self.space, size=child_size, x=self.x, y=self.y)
+
+            kick_x, kick_y = child.velocity_x, child.velocity_y
+
+            child.velocity_x, child.velocity_y = child._clamp_speed(
+                self.velocity_x + kick_x,
+                self.velocity_y + kick_y,
             )
-            for _ in range(quantity)
-        ]
+
+            children.append(child)
+
+        return children
 
     def draw(self, screen: pygame.Surface) -> None:
         if not self.is_alive:
@@ -169,8 +158,14 @@ class Asteroid:
                     pygame.draw.circle(screen, color, (int(p["x"]), int(p["y"])), 1)
             return
 
-        transformed_points = [(self.x + px, self.y + py) for px, py in self.points]
-        pygame.draw.polygon(screen, (255, 255, 255), transformed_points, 2)
+        for offset_x, offset_y in self.space.ghost_offsets(
+            self.x, self.y, self.radius
+        ):
+            transformed_points = [
+                (self.x + offset_x + px, self.y + offset_y + py)
+                for px, py in self.shape
+            ]
+            pygame.draw.polygon(screen, (255, 255, 255), transformed_points, 2)
 
     @classmethod
     def points(cls, size: int) -> int:

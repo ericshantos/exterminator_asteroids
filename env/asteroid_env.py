@@ -1,3 +1,4 @@
+import random
 from typing import Any
 
 import gymnasium as gym
@@ -36,7 +37,7 @@ class AsteroidEnv(gym.Env[np.ndarray, int]):
         if render_mode == "human":
             self.renderer: Renderer = Renderer(self.world)
 
-        self.reward_system: RewardFunction = RewardFunction()
+        self.reward_system: RewardFunction = RewardFunction(self.space)
 
         self.action_space: spaces.Discrete = spaces.Discrete(ActionSpace.N_ACTIONS)
 
@@ -51,6 +52,10 @@ class AsteroidEnv(gym.Env[np.ndarray, int]):
         self, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[np.ndarray, dict[str, Any]]:
         super().reset(seed=seed)
+
+        # As entidades sorteiam com o `random` global, não com `self.np_random`.
+        if seed is not None:
+            random.seed(seed)
 
         self.current_step = 0
         self.world.reset()
@@ -96,6 +101,7 @@ class AsteroidEnv(gym.Env[np.ndarray, int]):
 
         info = {
             "score": self.world.score,
+            "lives": self.world.player_lives,
             "wave": self.world.wave,
             "frame_count": self.world.frame_count,
             "asteroid_destroyed": self.world.asteroids_destroyed,

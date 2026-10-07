@@ -33,11 +33,9 @@ class Renderer:
 
         self.world.player.draw(self.screen)
 
-        for asteroid in self.world.asteroids:
-            asteroid.draw(self.screen)
+        self.world.asteroid_manager.draw(self.screen)
 
-        if self.world.saucer:
-            self.world.saucer.draw(self.screen)
+        self.world.saucer_manager.draw(self.screen)
 
         self.hud.draw_lives(self.world.player)
         self.hud.draw_score(self.world.score_manager.get_score())

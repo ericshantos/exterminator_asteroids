@@ -6,6 +6,9 @@ from ..bullet import Bullet, BulletManager
 class Shooter(ABC):
     MAX_BULLETS: int = 4
 
+    x: float
+    y: float
+
     def __init__(self) -> None:
         self.bullet_manager = BulletManager()
 
@@ -14,15 +17,22 @@ class Shooter(ABC):
     def can_shoot(self) -> bool:
         return self.bullet_manager.count < self.MAX_BULLETS
 
-    def shoot(self, angle: float | None = None) -> None:
+    def fire(
+        self,
+        x: float,
+        y: float,
+        angle: float,
+        inherit_vx: float = 0.0,
+        inherit_vy: float = 0.0,
+    ) -> bool:
         if not self.can_shoot():
-            return
+            return False
 
         self.shots_fired += 1
 
-        shot_angle = self.angle if angle is None else angle
+        self.bullet_manager.shoot(x, y, angle, inherit_vx, inherit_vy)
 
-        self.bullet_manager.shoot(self.x, self.y, shot_angle)
+        return True
 
     @property
     def bullets(self) -> list[Bullet]:

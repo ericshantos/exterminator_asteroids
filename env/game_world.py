@@ -1,6 +1,5 @@
 from configs import cfg
 from entities import Asteroid, AsteroidManager, Bullet, Player, Saucer, SaucerManager
-from rendering import Renderer
 
 from .action_space import ActionMap
 from .collision_manager import CollisionManager
@@ -10,8 +9,11 @@ from .toroidal_space import ToroidalSpace
 
 
 class GameWorld:
-    def __init__(self, space: ToroidalSpace) -> None:
+    WAVE_DELAY: int = 90
 
+    WAVE_INCREMENT: int = 2
+
+    def __init__(self, space: ToroidalSpace) -> None:
         self.space = space
 
         self.frame_count: int
@@ -21,14 +23,12 @@ class GameWorld:
         self.asteroid_manager: AsteroidManager
         self.score_manager: ScoreManager
         self.collision_manager: CollisionManager
-        self.space: ToroidalSpace
 
         self.initial_asteroids: int
         self.wave: int
+        self.wave_timer: int
 
         self.saucer_spawn_timer: int
-
-        self.player_spawn_timer: int
 
         self.saucer_manager: SaucerManager
 
@@ -38,10 +38,11 @@ class GameWorld:
         self.frame_count = 0
 
         self.wave = 1
+        self.wave_timer = 0
 
         self.saucer_spawn_timer = 0
 
-        self.initial_asteroids: int = cfg.game.initial_asteroids
+        self.initial_asteroids = cfg.game.initial_asteroids
 
         self.done = False
 
@@ -54,48 +55,59 @@ class GameWorld:
         self.score_manager = ScoreManager(self.player)
 
         self.collision_manager = CollisionManager(
-            self.player, self.asteroid_manager, self.score_manager
+            self.player, self.asteroid_manager, self.score_manager, self.space
         )
 
         self.asteroid_manager.spawn_wave(
             self.initial_asteroids, self.player.x, self.player.y
         )
-        
+
+    def _wave_size(self, wave: int) -> int:
+        return min(
+            self.initial_asteroids + (wave - 1) * self.WAVE_INCREMENT,
+            cfg.game.max_asteroids,
+        )
 
     def _next_wave(self) -> None:
         self.wave += 1
 
-        num_asteroids = min(
-            self.initial_asteroids + (self.wave - 1) * 2, cfg.game.max_asteroids
+        self.asteroid_manager.spawn_wave(
+            self._wave_size(self.wave), self.player.x, self.player.y
         )
 
-        self.asteroid_manager.spawn_wave(num_asteroids, self.player.x, self.player.y)
+    def _update_saucer_spawn(self) -> None:
+        if self.saucer_manager.saucer is not None:
+            return
+
+        self.saucer_spawn_timer += 1
+
+        if self.saucer_spawn_timer > self.saucer_manager.spawn_interval(self.score):
+            self.saucer_manager.spawn(self.score)
+
+            self.saucer_spawn_timer = 0
+
+    def _update_wave(self) -> None:
+        if not self.asteroid_manager.is_empty:
+            return
+
+        if self.wave_timer == 0:
+            self.wave_timer = self.WAVE_DELAY
+            return
+
+        self.wave_timer -= 1
+
+        if self.wave_timer == 0:
+            self._next_wave()
 
     def update(self, action: ActionMap) -> None:
         if self.done:
             return
 
-        self.saucer_spawn_timer += 1
-
-        if (
-            self.saucer_manager.saucer is None
-            and self.saucer_spawn_timer > self.saucer_manager.spawn_interval(self.score)
-        ):
-            difficulty_score = self.score + self.wave * 1500
-
-            self.saucer_manager.spawn(difficulty_score)
-
-            self.saucer_spawn_timer = 0
-
         self.frame_count += 1
 
-        self.player.update(action)
+        self._update_saucer_spawn()
 
-        if action.shoot and self.player.is_alive:
-            self.player.shoot()
-
-        if action.hyperspace:
-            self.player.use_hyperspace()
+        self.player.update(action, self.asteroid_manager.count)
 
         self.asteroid_manager.update()
 
@@ -105,8 +117,7 @@ class GameWorld:
 
         self._handle_respawn()
 
-        if self.asteroid_manager.is_empty:
-            self._next_wave()
+        self._update_wave()
 
         if self.is_game_over():
             self.done = True
@@ -122,7 +133,11 @@ class GameWorld:
             return
 
         if RespawnManager.can_respawn(
-            self.player.start_x, self.player.start_y, self.asteroids
+            self.space,
+            self.player.start_x,
+            self.player.start_y,
+            self.asteroids,
+            self.saucer,
         ):
             self.player.respawn()
 
@@ -157,6 +172,10 @@ class GameWorld:
         return self.collision_manager.asteroids_destroyed
 
     @property
+    def saucers_destroyed(self) -> int:
+        return self.collision_manager.saucers_destroyed
+
+    @property
     def accuracy_hits(self) -> int:
         return self.collision_manager.accuracy_hits
 
@@ -165,7 +184,7 @@ class GameWorld:
         return self.player.shots_fired
 
     @property
-    def saucer(self) -> Saucer:
+    def saucer(self) -> Saucer | None:
         return self.saucer_manager.saucer
 
     @property
@@ -177,5 +196,4 @@ class GameWorld:
 
     @property
     def center_world(self) -> tuple[int, int]:
-
         return self.space.width // 2, self.space.height // 2

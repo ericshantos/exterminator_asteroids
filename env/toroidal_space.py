@@ -13,28 +13,35 @@ class ToroidalSpace:
     def wrap_x(
         self,
         x: float,
-        radius: float,
     ) -> float:
-        if x < -radius:
-            return self.width + radius
-
-        if x> self.width + radius:
-            return -radius
-
-        return x
+        return x % self.width
 
     def wrap_y(
         self,
         y: float,
-        radius: float,
     ) -> float:
-        if y < -radius:
-            return self.height + radius
-        
-        if y > self.height + radius:
-            return -radius
+        return y % self.height
 
-        return y
+    def ghost_offsets(
+        self,
+        x: float,
+        y: float,
+        radius: float,
+    ) -> list[tuple[float, float]]:
+        xs = [0.0]
+        ys = [0.0]
+
+        if x - radius < 0:
+            xs.append(float(self.width))
+        elif x + radius > self.width:
+            xs.append(-float(self.width))
+
+        if y - radius < 0:
+            ys.append(float(self.height))
+        elif y + radius > self.height:
+            ys.append(-float(self.height))
+
+        return [(ox, oy) for ox in xs for oy in ys]
 
     def delta_x(
         self,
@@ -119,4 +126,3 @@ class ToroidalSpace:
             [dx / norm, dy / norm],
             dtype=np.float32
         )
-        

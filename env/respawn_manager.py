@@ -1,22 +1,30 @@
-import numpy as np
+from entities import Asteroid, Saucer
 
-from entities import Asteroid
+from .toroidal_space import ToroidalSpace
 
 
 class RespawnManager:
     SAFE_RADIUS: float = 120.0
 
     @classmethod
-    def can_respawn(cls, x: float, y: float, asteroids: list[Asteroid]) -> bool:
+    def can_respawn(
+        cls,
+        space: ToroidalSpace,
+        x: float,
+        y: float,
+        asteroids: list[Asteroid],
+        saucer: Saucer | None = None,
+    ) -> bool:
         for asteroid in asteroids:
-            dx = asteroid.x - x
-            dy = asteroid.y - y
+            distance = space.distance(x, y, asteroid.x, asteroid.y)
 
-            distance = float(np.hypot(dx, dy))
+            if distance <= cls.SAFE_RADIUS + asteroid.radius:
+                return False
 
-            safe_distance = cls.SAFE_RADIUS + asteroid.radius
+        if saucer is not None and saucer.is_alive:
+            distance = space.distance(x, y, saucer.x, saucer.y)
 
-            if distance <= safe_distance:
+            if distance <= cls.SAFE_RADIUS + saucer.radius:
                 return False
 
         return True
