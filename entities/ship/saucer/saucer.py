@@ -1,14 +1,17 @@
+from __future__ import annotations
+
 import random
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import pygame
 
-from env.toroidal_space import ToroidalSpace
-
 from ..destroyed import Destroyable
 from ..ship import Shooter
 from .saucer_explosion_effect import SaucerExplosionEffect
+
+if TYPE_CHECKING:
+    from env.toroidal_space import ToroidalSpace
 
 
 class Saucer(Shooter, Destroyable):

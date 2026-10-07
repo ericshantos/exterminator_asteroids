@@ -1,16 +1,21 @@
+from __future__ import annotations
+
 import random
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pygame
 
 from configs import cfg
-from env.action_space import ActionMap
-from env.toroidal_space import ToroidalSpace
 
 from ..destroyed import Destroyable
 from ..ship import Shooter
 from .hyperspace_manager import HyperspaceManager
 from .ship_explosion_effect import ShipExplosionEffect
+
+if TYPE_CHECKING:
+    from env.action_space import ActionMap
+    from env.toroidal_space import ToroidalSpace
 
 
 class Player(Shooter, Destroyable):

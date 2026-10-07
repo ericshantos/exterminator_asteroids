@@ -1,8 +1,13 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pygame
 
-from env.toroidal_space import ToroidalSpace
-
 from .asteroid import Asteroid
+
+if TYPE_CHECKING:
+    from env.toroidal_space import ToroidalSpace
 
 
 class AsteroidManager:

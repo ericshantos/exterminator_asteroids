@@ -1,9 +1,14 @@
+from __future__ import annotations
+
 import random
+from typing import TYPE_CHECKING
 
 import pygame
 
 from .saucer import Saucer
-from env.toroidal_space import ToroidalSpace
+
+if TYPE_CHECKING:
+    from env.toroidal_space import ToroidalSpace
 
 
 class SaucerManager:
