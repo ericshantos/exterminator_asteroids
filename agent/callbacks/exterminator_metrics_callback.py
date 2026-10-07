@@ -1,5 +1,7 @@
 from stable_baselines3.common.callbacks import BaseCallback
 
+from entities import DeathCause
+
 
 class ExterminatorMetricsCallback(BaseCallback):
     KEYS: dict[str, str] = {
@@ -8,6 +10,15 @@ class ExterminatorMetricsCallback(BaseCallback):
         "wave": "exterminator/wave",
         "accuracy": "exterminator/accuracy",
         "frame_count": "exterminator/frames",
+        "lives_lost": "exterminator/lives_lost",
+        "points_per_life": "exterminator/points_per_life",
+        "saucers_spawned": "exterminator/saucers_spawned",
+        "saucers_destroyed": "exterminator/saucers_destroyed",
+        "hyperspace_jumps": "exterminator/hyperspace_jumps",
+        **{
+            f"deaths_{cause.value}": f"exterminator/deaths/{cause.value}"
+            for cause in DeathCause
+        },
     }
 
     def __init__(self, verbose: int = 0) -> None:
