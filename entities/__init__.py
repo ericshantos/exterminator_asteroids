@@ -1,11 +1,12 @@
 from .asteroid import Asteroid, AsteroidManager
 from .bullet import Bullet, BulletManager
-from .ship import Player, Saucer, SaucerManager
+from .ship import DeathCause, Player, Saucer, SaucerManager
 
 __all__ = [
     "Asteroid",
     "AsteroidManager",
     "Bullet",
+    "DeathCause",
     "Player",
     "Saucer",
     "SaucerManager",

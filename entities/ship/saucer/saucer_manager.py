@@ -18,6 +18,7 @@ class SaucerManager:
         self.space = space
 
         self.saucer: Saucer | None = None
+        self.spawned: int = 0
 
     def _difficulty_level(self, score: int) -> int:
         if score < 5000:
@@ -95,6 +96,8 @@ class SaucerManager:
             aim_error=aim_error,
         )
 
+        self.spawned += 1
+
     def update(self, player_x: float, player_y: float) -> None:
         if self.saucer:
             self.saucer.move(player_x, player_y)
@@ -104,6 +107,7 @@ class SaucerManager:
 
     def reset(self) -> None:
         self.saucer = None
+        self.spawned = 0
 
     def draw(self, surface: pygame.Surface) -> None:
         if self.saucer:

@@ -21,6 +21,7 @@ def test_match_runs_until_game_over_past_training_limit() -> None:
 
     assert result.end_reason == "game_over"
     assert result.lives_lost == cfg.game.starting_lives + result.extra_lives
+    assert sum(result.deaths.values()) == result.lives_lost
     assert result.decisions == result.actions["LEFT_SHOOT"]
     assert result.hits <= result.shots_fired
     assert result.game_seconds == result.frames / cfg.screen.fps

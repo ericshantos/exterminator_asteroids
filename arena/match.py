@@ -17,6 +17,14 @@ from .arena_env import ArenaEnv
 Algo = Literal["dqn", "ppo"]
 EndReason = Literal["game_over", "window_closed", "interrupted"]
 
+DEATH_LABELS: dict[str, str] = {
+    "saucer_bullet": "Tiro do disco",
+    "asteroid": "Asteroide",
+    "hyperspace_failure": "Falha do hiperespaço",
+    "hyperspace_landing": "Asteroide após hiperespaço",
+    "saucer_collision": "Colisão com o disco",
+}
+
 MODEL_PATHS: dict[str, Path] = {
     "dqn": Path("models/exterminator_dqn.zip"),
     "ppo": Path("models/exterminator_ppo.zip"),
@@ -50,8 +58,12 @@ class MatchResult:
     extra_lives: int
     peak_lives: int
     hyperspace_jumps: int
+    saucers_spawned: int
+    saucer_kill_rate: float
     points_per_minute: float
+    points_per_life: float
     seconds_per_life: float
+    deaths: dict[str, int] = field(default_factory=dict)
     actions: dict[str, int] = field(default_factory=dict)
 
 
@@ -131,7 +143,7 @@ def _summarize(
 ) -> MatchResult:
     world = arena.world
     game_seconds = world.frame_count / cfg.screen.fps
-    lives_used = max(arena.lives_lost, 1)
+    lives_used = max(world.lives_lost, 1)
 
     return MatchResult(
         algo=algo,
@@ -149,10 +161,18 @@ def _summarize(
         shots_fired=world.shots_fired,
         hits=world.accuracy_hits,
         accuracy=world.accuracy,
-        lives_lost=arena.lives_lost,
+        lives_lost=world.lives_lost,
         extra_lives=arena.extra_lives,
         peak_lives=arena.peak_lives,
-        hyperspace_jumps=arena.hyperspace_jumps,
+        hyperspace_jumps=world.hyperspace_jumps,
+        saucers_spawned=world.saucers_spawned,
+        saucer_kill_rate=(
+            world.saucers_destroyed / world.saucers_spawned
+            if world.saucers_spawned
+            else 0.0
+        ),
+        points_per_life=world.points_per_life,
+        deaths=world.deaths,
         points_per_minute=world.score / (game_seconds / 60) if game_seconds else 0.0,
         seconds_per_life=game_seconds / lives_used,
         actions={a.name: actions[a] for a in Action},
@@ -182,9 +202,11 @@ def format_report(result: MatchResult) -> str:
         f"({result.frames} frames)",
         f"Tempo real:           {result.wall_seconds:.1f} s",
         f"Pontos por minuto:    {result.points_per_minute:.1f}",
+        f"Pontos por vida:      {result.points_per_life:.0f}",
         "",
         f"Asteroides destruídos: {result.asteroids_destroyed}",
-        f"Discos destruídos:    {result.saucers_destroyed}",
+        f"Discos destruídos:    {result.saucers_destroyed} de "
+        f"{result.saucers_spawned} ({result.saucer_kill_rate:.0%})",
         f"Tiros disparados:     {result.shots_fired}",
         f"Acertos:              {result.hits}",
         f"Precisão:             {result.accuracy:.2%}",
@@ -195,8 +217,17 @@ def format_report(result: MatchResult) -> str:
         f"Tempo médio por vida: {result.seconds_per_life:.1f} s",
         f"Hiperespaços:         {result.hyperspace_jumps}",
         "",
-        f"Decisões do agente:   {result.decisions}",
+        "Mortes por causa:",
     ]
+
+    lost = max(result.lives_lost, 1)
+
+    lines += [
+        f"  {DEATH_LABELS.get(cause, cause):<27} {n:>4}  {n / lost:6.1%}"
+        for cause, n in sorted(result.deaths.items(), key=lambda i: -i[1])
+    ]
+
+    lines += ["", f"Decisões do agente:   {result.decisions}"]
 
     lines += [f"  {name:<20} {n:>7}  {n / total:6.1%}" for name, n in used]
 

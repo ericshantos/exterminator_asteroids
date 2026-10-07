@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+from collections import Counter
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -10,6 +11,7 @@ from configs import cfg
 
 from ..destroyed import Destroyable
 from ..ship import Shooter
+from .death_cause import DeathCause
 from .hyperspace_manager import HyperspaceManager
 from .ship_explosion_effect import ShipExplosionEffect
 
@@ -30,6 +32,8 @@ class Player(Shooter, Destroyable):
     STARTING_LIVES: int = cfg.game.starting_lives
 
     RESPAWN_DELAY: int = 90
+
+    HYPERSPACE_LANDING_WINDOW: int = 60
 
     def __init__(self, x: float, y: float, space: ToroidalSpace) -> None:
         super().__init__()
@@ -56,6 +60,10 @@ class Player(Shooter, Destroyable):
 
         self.is_alive: bool = True
         self._lives: int = self.STARTING_LIVES
+
+        self.deaths: Counter[DeathCause] = Counter()
+        self.hyperspace_jumps: int = 0
+        self.frames_since_hyperspace: int = self.HYPERSPACE_LANDING_WINDOW
 
         self.explosion: ShipExplosionEffect = ShipExplosionEffect()
         self.hyperspace_manager: HyperspaceManager = HyperspaceManager()
@@ -116,6 +124,8 @@ class Player(Shooter, Destroyable):
 
             return
 
+        self.frames_since_hyperspace += 1
+
         if action.rotate_left:
             self.angle -= self.ROTATION_SPEED
         elif action.rotate_right:
@@ -171,6 +181,7 @@ class Player(Shooter, Destroyable):
         self.is_accelerating = False
 
         self.used_hyperspace_this_step = True
+        self.hyperspace_jumps += 1
 
     def _exit_hyperspace(self, asteroid_count: int) -> None:
         self.x, self.y = self.hyperspace_manager.teleport(
@@ -178,12 +189,26 @@ class Player(Shooter, Destroyable):
             self.space.height,
         )
 
-        if self.hyperspace_manager.should_explode(asteroid_count):
-            self.die()
+        self.frames_since_hyperspace = 0
 
-    def die(self) -> None:
+        if self.hyperspace_manager.should_explode(asteroid_count):
+            self.die(DeathCause.HYPERSPACE_FAILURE)
+
+    @property
+    def lives_lost(self) -> int:
+        return sum(self.deaths.values())
+
+    def die(self, cause: DeathCause) -> None:
         if not self.is_alive:
             return
+
+        if (
+            cause is DeathCause.ASTEROID
+            and self.frames_since_hyperspace < self.HYPERSPACE_LANDING_WINDOW
+        ):
+            cause = DeathCause.HYPERSPACE_LANDING
+
+        self.deaths[cause] += 1
 
         self.is_alive = False
         self.lose_life()
@@ -205,6 +230,7 @@ class Player(Shooter, Destroyable):
         self.velocity_y = 0
 
         self.hyperspace_manager.reset()
+        self.frames_since_hyperspace = self.HYPERSPACE_LANDING_WINDOW
 
         self.explosion.reset()
         self.is_alive = True
