@@ -30,9 +30,6 @@ class ArenaEnv(gym.Env[np.ndarray, int]):
         )
 
         self.closed_by_user = False
-        self.lives_lost = 0
-        self.extra_lives = 0
-        self.hyperspace_jumps = 0
         self.peak_lives = 0
 
     def reset(
@@ -46,9 +43,6 @@ class ArenaEnv(gym.Env[np.ndarray, int]):
         self.world.reset()
 
         self.closed_by_user = False
-        self.lives_lost = 0
-        self.extra_lives = 0
-        self.hyperspace_jumps = 0
         self.peak_lives = self.world.player_lives
 
         return self.observation.build(self.world), {}
@@ -61,26 +55,22 @@ class ArenaEnv(gym.Env[np.ndarray, int]):
 
             return self.observation.build(self.world), 0.0, True, False, {}
 
-        lives_before = self.world.player_lives
-
         self.world.update(ActionSpace.to_action(int(action_id)))
 
-        lives_after = self.world.player_lives
-
-        if lives_after < lives_before:
-            self.lives_lost += lives_before - lives_after
-        elif lives_after > lives_before:
-            self.extra_lives += lives_after - lives_before
-
-        self.peak_lives = max(self.peak_lives, lives_after)
-
-        if self.world.player.used_hyperspace_this_step:
-            self.hyperspace_jumps += 1
+        self.peak_lives = max(self.peak_lives, self.world.player_lives)
 
         if self.renderer is not None:
             self.renderer.draw()
 
         return self.observation.build(self.world), 0.0, self.world.is_done(), False, {}
+
+    @property
+    def extra_lives(self) -> int:
+        return (
+            self.world.player_lives
+            + self.world.lives_lost
+            - self.world.player.STARTING_LIVES
+        )
 
     def close(self) -> None:
         if self.renderer is not None:
