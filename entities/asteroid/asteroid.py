@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import random
-from typing import Literal, cast
+from typing import TYPE_CHECKING, Literal, cast
 
 import numpy as np
 import pygame
 
-from env.toroidal_space import ToroidalSpace
-
 from .typed import Particle
+
+if TYPE_CHECKING:
+    from env.toroidal_space import ToroidalSpace
 
 AsteroidSize = Literal[1, 2, 3]
 
