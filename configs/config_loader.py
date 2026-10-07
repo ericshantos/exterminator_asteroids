@@ -23,6 +23,7 @@ class ConfigLoader:
 
         data.update(load_yaml(path / "environment.yaml"))
         data.update(load_yaml(path / "dqn.yaml"))
+        data.update(load_yaml(path / "ppo.yaml"))
         data.update(load_yaml(path / "training.yaml"))
 
         return cast(ApolloConfig, from_dict(data_class=ApolloConfig, data=data))

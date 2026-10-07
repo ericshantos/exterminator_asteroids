@@ -64,6 +64,22 @@ class DQNConfig:
 
 
 @dataclass
+class PPOConfig:
+    n_envs: int
+    learning_rate: float
+    gamma: float
+    gae_lambda: float
+    clip_range: float
+    n_steps: int
+    batch_size: int
+    epochs: int
+    ent_coef: float
+    vf_coef: float
+    max_grad_norm: float
+    total_timesteps: int
+
+
+@dataclass
 class TrainingConfig:
     total_timesteps: int
     evaluation_frequency: int
@@ -79,4 +95,5 @@ class ApolloConfig:
     reward: RewardConfig
     rl: RLConfig
     dqn: DQNConfig
+    ppo: PPOConfig
     training: TrainingConfig
