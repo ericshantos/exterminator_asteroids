@@ -38,9 +38,8 @@ class EnvironmentConfig:
 
 @dataclass
 class RLConfig:
-    observation_radius: float
     max_episode_steps: int
-    normalize_observation: bool
+    frame_skip: int
 
 
 @dataclass

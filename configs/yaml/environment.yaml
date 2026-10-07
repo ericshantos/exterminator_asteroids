@@ -25,6 +25,7 @@ reward:
   aim_shaping: 0.5
 
 rl:
-  observation_radius: 500.0
-  max_episode_steps: 5000
-  normalize_observation: true
+  max_episode_steps: 20000
+
+  # Frames por ação do agente. max_episode_steps continua contado em frames.
+  frame_skip: 4
