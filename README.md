@@ -114,6 +114,25 @@ Opções: `--algo {dqn,ppo}`, `--model CAMINHO`, `--seed N`, `--no-render`,
 `--output ARQUIVO`. Fechar a janela ou apertar Ctrl+C encerra a partida e
 mostra as métricas até aquele ponto. O motivo do fim fica em `end_reason`.
 
+#### Avaliação em lote
+
+```bash
+python -m arena --algo ppo --no-render --matches 30 --output logs/arena/v0.json
+```
+
+Com `--matches N`, a arena joga N partidas com seeds consecutivas, a partir de
+`--seed` ou de 1000 por padrão, e mostra a média, o intervalo de confiança de
+95%, o desvio, o mínimo e o máximo de cada métrica. Também mostra os pontos por
+vida somando todas as partidas e as mortes por causa no lote inteiro.
+
+Sem janela, as partidas rodam em paralelo, com um processo por núcleo; use
+`--workers N` para escolher outro número. Cada partida fixa a própria seed, então
+o resultado é o mesmo com ou sem paralelismo. Partidas interrompidas por Ctrl+C
+ficam de fora do resumo. `--output` salva o resumo e todas as partidas em JSON.
+
+Para comparar duas versões de um modelo, avalie as duas com as mesmas seeds e o
+mesmo número de partidas.
+
 ### Usar o ambiente diretamente
 
 ```python
