@@ -172,6 +172,10 @@ class GameWorld:
         return self.collision_manager.asteroids_destroyed
 
     @property
+    def saucers_destroyed(self) -> int:
+        return self.collision_manager.saucers_destroyed
+
+    @property
     def accuracy_hits(self) -> int:
         return self.collision_manager.accuracy_hits
 

@@ -21,6 +21,7 @@ class CollisionManager:
 
     def reset(self) -> None:
         self.asteroids_destroyed = 0
+        self.saucers_destroyed = 0
         self.accuracy_hits = 0
 
     def _touching(
@@ -77,6 +78,7 @@ class CollisionManager:
 
                 self.score_manager.add(Saucer.points(saucer.size_type))
 
+                self.saucers_destroyed += 1
                 self.accuracy_hits += 1
 
                 return
@@ -123,6 +125,7 @@ class CollisionManager:
             self.player.x, self.player.y, self.player.RADIUS,
         ):
             self.score_manager.add(Saucer.points(saucer.size_type))
+            self.saucers_destroyed += 1
 
             saucer.die()
 
