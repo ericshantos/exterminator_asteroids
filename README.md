@@ -98,9 +98,15 @@ python -m arena --model models/outro.zip --algo dqn --output logs/arena/partida.
 O pacote `arena` tira as restrições de treino. Não há limite de
 `max_episode_steps` nem recompensa, e a partida só termina no game over. O
 frame skip continua, porque o modelo foi treinado decidindo a cada 4 frames.
-Ao final aparecem a pontuação, a onda alcançada, o tempo de jogo, os
-asteroides e discos destruídos, os tiros, a precisão, as vidas perdidas e
-extras, o tempo médio por vida, os hiperespaços e a distribuição das ações.
+Ao final aparecem:
+
+- a pontuação, a onda alcançada, o tempo de jogo, os pontos por minuto e os
+  pontos por vida perdida;
+- os asteroides destruídos e os discos destruídos sobre os que apareceram;
+- os tiros e a precisão;
+- as vidas perdidas e extras, o tempo médio por vida e os hiperespaços;
+- as mortes por causa e a distribuição das ações.
+
 `--output` salva o mesmo resultado em JSON.
 
 Opções: `--algo {dqn,ppo}`, `--model CAMINHO`, `--seed N`, `--no-render`,
@@ -240,7 +246,18 @@ isso, girar sem parar não acumula nada, e o acerto em si é pago pela pontuaç�
 - `truncated`: o episódio chegou a `rl.max_episode_steps` frames.
 
 O `info` de cada passo traz `score`, `lives`, `wave`, `frame_count`, `asteroid_destroyed`,
-`shots_fired`, `accuracy_hits` e `accuracy`.
+`shots_fired`, `accuracy_hits` e `accuracy`, além das métricas de diagnóstico:
+
+| Chave | Conteúdo |
+|---|---|
+| `lives_lost` | Vidas perdidas no episódio |
+| `points_per_life` | Pontuação dividida pelas vidas perdidas (a pontuação, se nenhuma foi perdida) |
+| `saucers_spawned`, `saucers_destroyed` | Discos que apareceram e discos destruídos pela nave |
+| `hyperspace_jumps` | Entradas no hiperespaço |
+| `deaths_<causa>` | Mortes por causa: `asteroid`, `hyperspace_landing` (asteroide até 1 s depois de sair do hiperespaço), `hyperspace_failure`, `saucer_bullet` e `saucer_collision` |
+
+O `ExterminatorMetricsCallback` envia essas métricas ao TensorBoard no fim de cada
+episódio, com o prefixo `exterminator/`.
 
 ## Configuração
 
