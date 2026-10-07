@@ -11,21 +11,15 @@ game:
   max_asteroids: 11
 
 reward:
-  # Por frame, só com a nave ativa: um episódio inteiro (20000 frames) soma 10.
   survive_step: 0.002
-  # Pontos do jogo -> recompensa: asteroides valem 0,2 / 0,5 / 1,0; discos, 2 / 10.
   score_scale: 0.01
   life_lost: 3.0
   game_over: 10.0
   hyperspace_cost: 0.05
-  # Por projétil que expira sem acertar nada.
   missed_shot: 0.02
-  # Peso do shaping de ameaça (diferença de potencial, em [-1, 1] por frame).
   danger_shaping: 0.5
   aim_shaping: 0.5
 
 rl:
   max_episode_steps: 20000
-
-  # Frames por ação do agente. max_episode_steps continua contado em frames.
   frame_skip: 4
