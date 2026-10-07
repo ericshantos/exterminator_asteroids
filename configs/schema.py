@@ -15,7 +15,6 @@ class GameConfig:
     extra_life_score: int
     initial_asteroids: int
     max_asteroids: int
-    max_steps_per_episode: int
 
 
 @dataclass

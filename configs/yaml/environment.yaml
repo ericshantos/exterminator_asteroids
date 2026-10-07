@@ -9,7 +9,6 @@ game:
   extra_life_score: 10000
   initial_asteroids: 4
   max_asteroids: 11
-  max_steps_per_episode: 10000
 
 reward:
   # Por frame, só com a nave ativa: um episódio inteiro (20000 frames) soma 10.
