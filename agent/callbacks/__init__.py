@@ -1,3 +1,3 @@
-from .apollo_metrics_callback import ApolloMetricsCallback
+from .exterminator_metrics_callback import ExterminatorMetricsCallback
 
-__all__ = ["ApolloMetricsCallback"]
+__all__ = ["ExterminatorMetricsCallback"]

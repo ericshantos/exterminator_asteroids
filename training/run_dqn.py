@@ -8,6 +8,6 @@ env = make_env()
 
 agent: DQNAgent = DQNAgent(env=env, config=cfg.dqn, seed=cfg.training.seed)
 
-trainer: Trainer = Trainer(agent, model_path="models/apollo_dqn.zip")
+trainer: Trainer = Trainer(agent, model_path="models/exterminator_dqn.zip")
 
 trainer.train(timesteps=cfg.dqn.total_timesteps)

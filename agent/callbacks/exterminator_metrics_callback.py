@@ -1,13 +1,13 @@
 from stable_baselines3.common.callbacks import BaseCallback
 
 
-class ApolloMetricsCallback(BaseCallback):
+class ExterminatorMetricsCallback(BaseCallback):
     KEYS: dict[str, str] = {
-        "score": "apollo/score",
-        "asteroid_destroyed": "apollo/destroyed",
-        "wave": "apollo/wave",
-        "accuracy": "apollo/accuracy",
-        "frame_count": "apollo/frames",
+        "score": "exterminator/score",
+        "asteroid_destroyed": "exterminator/destroyed",
+        "wave": "exterminator/wave",
+        "accuracy": "exterminator/accuracy",
+        "frame_count": "exterminator/frames",
     }
 
     def __init__(self, verbose: int = 0) -> None:

@@ -18,8 +18,8 @@ Algo = Literal["dqn", "ppo"]
 EndReason = Literal["game_over", "window_closed", "interrupted"]
 
 MODEL_PATHS: dict[str, Path] = {
-    "dqn": Path("models/apollo_dqn.zip"),
-    "ppo": Path("models/apollo_ppo.zip"),
+    "dqn": Path("models/exterminator_dqn.zip"),
+    "ppo": Path("models/exterminator_ppo.zip"),
 }
 
 

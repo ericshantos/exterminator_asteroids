@@ -89,7 +89,7 @@ class TrainingConfig:
 
 
 @dataclass
-class ApolloConfig:
+class ExterminatorConfig:
     screen: ScreenConfig
     game: GameConfig
     reward: RewardConfig
