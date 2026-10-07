@@ -1,27 +1,43 @@
+import argparse
 from pathlib import Path
 
-from stable_baselines3 import DQN
+from stable_baselines3 import DQN, PPO
 
-from env import AsteroidEnv
+from configs import cfg
+from env import make_env
 import numpy as np
 
 
-MODEL_PATH = Path("models/apollo_dqn.zip")
+MODEL_PATHS = {
+    "dqn": Path("models/apollo_dqn.zip"),
+    "ppo": Path("models/apollo_ppo.zip"),
+}
 EPISODES = 20
 
 
-def evaluate():
-    env = AsteroidEnv(render_mode="human")
+def evaluate(
+    algo: str = "dqn",
+    model_path: Path | None = None,
+    episodes: int = EPISODES,
+    render: bool = True,
+    seed: int | None = None,
+):
+    env = make_env(render_mode="human" if render else None)
 
-    model = DQN.load(MODEL_PATH)
+    path = model_path or MODEL_PATHS[algo]
+
+    if algo == "ppo":
+        model = PPO.load(path, device="cpu")
+    else:
+        model = DQN.load(path)
 
     scores = []
     survival_times = []
     accuracies = []
     asteroids_destroyed = []
 
-    for episode in range(EPISODES):
-        obs, info = env.reset()
+    for episode in range(episodes):
+        obs, info = env.reset(seed=seed + episode if seed is not None else None)
 
         done = False
         truncated = False
@@ -32,10 +48,10 @@ def evaluate():
             obs, reward, done, truncated, info = env.step(action)
 
         scores.append(info.get("score", 0))
-        survival_times.append(info.get("survival_time", 0))
+        survival_times.append(info.get("frame_count", 0) / cfg.screen.fps)
         accuracies.append(info.get("accuracy", 0))
         asteroids_destroyed.append(
-            info.get("asteroids_destroyed", 0)
+            info.get("asteroid_destroyed", 0)
         )
 
         print(
@@ -47,7 +63,7 @@ def evaluate():
 
     print("\n=== RESULTS ===")
 
-    print(f"Episodes: {EPISODES}")
+    print(f"Episodes: {episodes}")
 
     print(
         f"Average score: "
@@ -56,7 +72,7 @@ def evaluate():
 
     print(
         f"Average survival time: "
-        f"{np.mean(survival_times):.2f}"
+        f"{np.mean(survival_times):.2f} s"
     )
 
     print(
@@ -73,4 +89,13 @@ def evaluate():
 
 
 if __name__ == "__main__":
-    evaluate()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--algo", choices=MODEL_PATHS.keys(), default="dqn")
+    parser.add_argument("--model", type=Path, default=None)
+    parser.add_argument("--episodes", type=int, default=EPISODES)
+    parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument("--no-render", action="store_true")
+
+    args = parser.parse_args()
+
+    evaluate(args.algo, args.model, args.episodes, not args.no_render, args.seed)
