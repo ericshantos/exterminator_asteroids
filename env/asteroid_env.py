@@ -108,6 +108,7 @@ class AsteroidEnv(gym.Env[np.ndarray, int]):
             "shots_fired": self.world.shots_fired,
             "accuracy_hits": self.world.accuracy_hits,
             "accuracy": self.world.accuracy,
+            **self.world.diagnostics(),
         }
 
         return (obs, reward, terminated, truncated, info)

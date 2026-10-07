@@ -1,4 +1,12 @@
-from entities import Asteroid, AsteroidManager, Bullet, BulletManager, Player, Saucer
+from entities import (
+    Asteroid,
+    AsteroidManager,
+    Bullet,
+    BulletManager,
+    DeathCause,
+    Player,
+    Saucer,
+)
 
 from .score_manager import ScoreManager
 from .toroidal_space import ToroidalSpace
@@ -94,7 +102,7 @@ class CollisionManager:
             ):
                 saucer.bullet_manager.remove(bullet)
 
-                self.player.die()
+                self.player.die(DeathCause.SAUCER_BULLET)
 
                 return
 
@@ -112,7 +120,7 @@ class CollisionManager:
 
                 self.asteroid_manager.remove(asteroid)
 
-                self.player.die()
+                self.player.die(DeathCause.ASTEROID)
 
                 return
 
@@ -129,7 +137,7 @@ class CollisionManager:
 
             saucer.die()
 
-            self.player.die()
+            self.player.die(DeathCause.SAUCER_COLLISION)
 
     def check_saucer_asteroid_collision(self, saucer: Saucer) -> None:
         if not saucer.is_alive:

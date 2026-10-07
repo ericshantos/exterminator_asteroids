@@ -1,5 +1,13 @@
 from configs import cfg
-from entities import Asteroid, AsteroidManager, Bullet, Player, Saucer, SaucerManager
+from entities import (
+    Asteroid,
+    AsteroidManager,
+    Bullet,
+    DeathCause,
+    Player,
+    Saucer,
+    SaucerManager,
+)
 
 from .action_space import ActionMap
 from .collision_manager import CollisionManager
@@ -193,6 +201,40 @@ class GameWorld:
             return 0.0
 
         return self.accuracy_hits / self.shots_fired
+
+    @property
+    def lives_lost(self) -> int:
+        return self.player.lives_lost
+
+    @property
+    def deaths(self) -> dict[str, int]:
+        return {cause.value: self.player.deaths[cause] for cause in DeathCause}
+
+    @property
+    def saucers_spawned(self) -> int:
+        return self.saucer_manager.spawned
+
+    @property
+    def hyperspace_jumps(self) -> int:
+        return self.player.hyperspace_jumps
+
+    @property
+    def points_per_life(self) -> float:
+        return self.score / max(self.lives_lost, 1)
+
+    def diagnostics(self) -> dict[str, float]:
+        metrics: dict[str, float] = {
+            "lives_lost": self.lives_lost,
+            "points_per_life": self.points_per_life,
+            "saucers_spawned": self.saucers_spawned,
+            "saucers_destroyed": self.saucers_destroyed,
+            "hyperspace_jumps": self.hyperspace_jumps,
+        }
+
+        for cause, count in self.deaths.items():
+            metrics[f"deaths_{cause}"] = count
+
+        return metrics
 
     @property
     def center_world(self) -> tuple[int, int]:
