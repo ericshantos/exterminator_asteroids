@@ -30,6 +30,7 @@ class RewardFunction:
         self.previous_misses = 0
         self.previous_threat = 0.0
         self.previous_aim = 0.0
+        self.previous_active: bool = True
         self.previous_target: int | None = None
 
     def _relative(
@@ -135,11 +136,13 @@ class RewardFunction:
         self.previous_misses = misses
 
         threat = self.threat(world)
-        reward -= rc.danger_shaping * (threat - self.previous_threat)
-        self.previous_threat = threat
 
-        # Troca de alvo (inclusive por destruí-lo) não gera shaping: só girar
-        # em direção ao mesmo alvo é recompensado.
+        if self.previous_active and player.is_active:
+            reward -= rc.danger_shaping * (threat - self.previous_threat)
+
+        self.previous_threat = threat
+        self.previous_active = player.is_active
+
         aim, target = self.aim(world)
         if target is not None and target == self.previous_target:
             reward += rc.aim_shaping * (aim - self.previous_aim)

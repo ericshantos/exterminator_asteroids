@@ -254,6 +254,14 @@ disco e tiros do disco) num horizonte de 2 s. Como o shaping é uma diferença d
 potenciais (Ng et al., 1999), ele adianta o sinal da morte sem mudar a política
 ótima.
 
+O shaping de ameaça só é pago entre dois frames seguidos com a nave ativa (viva e
+fora do hiperespaço). Entrar no hiperespaço ou morrer não rende o crédito de
+"perigo resolvido", e reaparecer num lugar perigoso, depois do hiperespaço ou do
+renascimento, não é cobrado, porque o lugar é sorteado. Assim, só um desvio de
+verdade recupera o que a ameaça custou, e o valor do hiperespaço vem apenas das
+consequências reais: o custo de entrada, o tempo sem bônus de sobrevivência e o
+risco de explodir na volta.
+
 O shaping de mira também é uma diferença: paga quando a nave gira em direção ao
 ponto de interceptação do alvo que o projétil alcança mais rápido e cobra quando
 ela se afasta. Trocar de alvo (inclusive ao destruí-lo) não gera recompensa. Por
