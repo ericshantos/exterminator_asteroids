@@ -12,9 +12,18 @@ game:
   max_steps_per_episode: 10000
 
 reward:
-  player_died: 50.0
-  survive_step: 0.01
-  idle_penalty: -0.001
+  # Por frame, só com a nave ativa: um episódio inteiro (20000 frames) soma 10.
+  survive_step: 0.002
+  # Pontos do jogo -> recompensa: asteroides valem 0,2 / 0,5 / 1,0; discos, 2 / 10.
+  score_scale: 0.01
+  life_lost: 3.0
+  game_over: 10.0
+  hyperspace_cost: 0.05
+  # Por projétil que expira sem acertar nada.
+  missed_shot: 0.02
+  # Peso do shaping de ameaça (diferença de potencial, em [-1, 1] por frame).
+  danger_shaping: 0.5
+  aim_shaping: 0.5
 
 rl:
   observation_radius: 500.0

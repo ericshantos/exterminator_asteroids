@@ -20,9 +20,14 @@ class GameConfig:
 
 @dataclass
 class RewardConfig:
-    player_died: float
     survive_step: float
-    idle_penalty: float
+    score_scale: float
+    life_lost: float
+    game_over: float
+    hyperspace_cost: float
+    missed_shot: float
+    danger_shaping: float
+    aim_shaping: float
 
 
 @dataclass
