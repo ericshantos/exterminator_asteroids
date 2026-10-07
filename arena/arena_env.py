@@ -32,6 +32,17 @@ class ArenaEnv(gym.Env[np.ndarray, int]):
         self.closed_by_user = False
         self.peak_lives = 0
 
+        self.skip_observation: bool = False
+        self.last_observation: np.ndarray = np.zeros(
+            Observation.SIZE, dtype=np.float32
+        )
+
+    def observe(self) -> np.ndarray:
+        if not self.skip_observation:
+            self.last_observation = self.observation.build(self.world)
+
+        return self.last_observation
+
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[np.ndarray, dict[str, Any]]:
@@ -45,7 +56,7 @@ class ArenaEnv(gym.Env[np.ndarray, int]):
         self.closed_by_user = False
         self.peak_lives = self.world.player_lives
 
-        return self.observation.build(self.world), {}
+        return self.observe(), {}
 
     def step(
         self, action_id: int
@@ -53,7 +64,7 @@ class ArenaEnv(gym.Env[np.ndarray, int]):
         if self.renderer is not None and not self.renderer.handle_events():
             self.closed_by_user = True
 
-            return self.observation.build(self.world), 0.0, True, False, {}
+            return self.observe(), 0.0, True, False, {}
 
         self.world.update(ActionSpace.to_action(int(action_id)))
 
@@ -62,7 +73,7 @@ class ArenaEnv(gym.Env[np.ndarray, int]):
         if self.renderer is not None:
             self.renderer.draw()
 
-        return self.observation.build(self.world), 0.0, self.world.is_done(), False, {}
+        return self.observe(), 0.0, self.world.is_done(), False, {}
 
     @property
     def extra_lives(self) -> int:

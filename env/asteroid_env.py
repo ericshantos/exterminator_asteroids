@@ -48,6 +48,17 @@ class AsteroidEnv(gym.Env[np.ndarray, int]):
         self.current_step: int = 0
         self.max_episode_steps: int = cfg.rl.max_episode_steps
 
+        self.skip_observation: bool = False
+        self.last_observation: np.ndarray = np.zeros(
+            Observation.SIZE, dtype=np.float32
+        )
+
+    def observe(self) -> np.ndarray:
+        if not self.skip_observation:
+            self.last_observation = self.observation.build(self.world)
+
+        return self.last_observation
+
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[np.ndarray, dict[str, Any]]:
@@ -61,7 +72,7 @@ class AsteroidEnv(gym.Env[np.ndarray, int]):
         self.world.reset()
         self.reward_system.reset()
 
-        obs = self.observation.build(self.world)
+        obs = self.observe()
 
         info: dict[str, int | float] = {}
 
@@ -78,7 +89,7 @@ class AsteroidEnv(gym.Env[np.ndarray, int]):
             if not running:
                 self.world.done = True
 
-                obs = self.observation.build(self.world)
+                obs = self.observe()
 
                 return (obs, 0.0, True, False, {})
 
@@ -88,7 +99,7 @@ class AsteroidEnv(gym.Env[np.ndarray, int]):
 
         self.render()
 
-        obs = self.observation.build(self.world)
+        obs = self.observe()
 
         reward = self.reward_system.compute(self.world, action)
 
