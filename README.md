@@ -2,7 +2,7 @@
 
 Ambiente de Aprendizado por Reforço que reproduz o **Asteroids** do arcade da Atari
 (1979), feito em Python com Pygame e exposto como um ambiente
-[Gymnasium](https://gymnasium.farama.org/). O repositório inclui um agente DQN
+[Gymnasium](https://gymnasium.farama.org/). O repositório inclui agentes DQN e PPO
 (Stable-Baselines3) para treinar e avaliar políticas no jogo.
 
 O ambiente foi auditado e ajustado para seguir as regras do arcade original.
@@ -66,14 +66,47 @@ tensorboard --logdir logs/tensorboard
 O `DeviceManager` usa a GPU (CUDA) quando ela está disponível e tem memória livre
 suficiente. Caso contrário, usa a CPU.
 
+### Treinar o agente PPO
+
+```bash
+python -m training.run_ppo
+```
+
+Roda 16 ambientes em paralelo (`SubprocVecEnv`). O modelo é
+salvo em `models/exterminator_ppo.zip`, junto com as estatísticas de normalização da
+recompensa (`models/exterminator_ppo.vecnormalize.pkl`).
+
 ### Avaliar um modelo treinado
 
 ```bash
-python -m training.evaluate
+python -m training.evaluate              # DQN
+python -m training.evaluate --algo ppo   # PPO
+python -m training.evaluate --algo ppo --no-render --episodes 50 --seed 0
 ```
 
-Roda 20 episódios com renderização e mostra pontuação, asteroides destruídos e
-precisão de tiro.
+Por padrão, roda 20 episódios com renderização e mostra pontuação, tempo de
+sobrevivência, asteroides destruídos e precisão de tiro.
+
+### Jogar uma partida na arena
+
+```bash
+python -m arena --algo ppo                       # com janela, em tempo real
+python -m arena --algo ppo --no-render --seed 0  # sem janela, o mais rápido possível
+python -m arena --model models/outro.zip --algo dqn --output logs/arena/partida.json
+```
+
+O pacote `arena` tira as restrições de treino. Não há limite de
+`max_episode_steps` nem recompensa, e a partida só termina no game over. O
+frame skip continua, porque o modelo foi treinado decidindo a cada 4 frames.
+Ao final aparecem a pontuação, a onda alcançada, o tempo de jogo, os
+asteroides e discos destruídos, os tiros, a precisão, as vidas perdidas e
+extras, o tempo médio por vida, os hiperespaços e a distribuição das ações.
+`--output` salva o mesmo resultado em JSON.
+
+Opções: `--algo {dqn,ppo}`, `--model CAMINHO`, `--seed N`, `--no-render`,
+`--stochastic` (amostra a política em vez de usar a ação mais provável) e
+`--output ARQUIVO`. Fechar a janela ou apertar Ctrl+C encerra a partida e
+mostra as métricas até aquele ponto. O motivo do fim fica em `end_reason`.
 
 ### Usar o ambiente diretamente
 
@@ -90,6 +123,9 @@ while not (terminated or truncated):
 
 env.close()
 ```
+
+Aqui cada `step` é um frame. Para usar o mesmo ambiente do treino, com frame skip,
+troque `AsteroidEnv(...)` por `make_env(...)`.
 
 Sem janela (servidores, CI), defina `SDL_VIDEODRIVER=dummy`.
 
@@ -133,42 +169,77 @@ velocidades dos asteroides. Elas estão indicadas no relatório.
 Tiro e hiperespaço só são ativados na borda de subida. Para disparar de novo, o
 agente precisa escolher uma ação sem tiro em pelo menos um frame.
 
-### Observação: `Box(-1, 1, shape=(74,), float32)`
+### Passo do agente e frame skip
+
+O jogo roda a 60 frames por segundo, e cada ação do agente dura
+`rl.frame_skip` frames (4 por padrão, ou 15 decisões por segundo). As
+recompensas desses frames são somadas. Tiro e hiperespaço valem só no primeiro
+frame do bloco, então o agente pode disparar de novo no passo seguinte. Os dois
+agentes usam o mesmo ambiente, criado por `env.make_env()`.
+
+### Observação: `Box(-1, 1, shape=(128,), float32)`
+
+Tudo é expresso no **referencial da nave**: o eixo "proa" aponta para onde a nave
+mira e o eixo "direita" para o lado direito dela. Distâncias são toroidais.
 
 | Índices | Conteúdo |
 |---|---|
-| 0–3 | Nave: `vx`, `vy` normalizados, `cos` e `sin` do ângulo |
-| 4–14 | Disco voador (11 features de alvo; zeros se não houver disco) |
-| 15 | 1 se há disco voador, senão 0 |
-| 16–70 | Os 5 asteroides mais perigosos (11 features cada; zeros nas vagas vazias) |
-| 71–73 | Risco total e vetor de risco (x, y) |
+| 0–6 | Nave: velocidade (proa, direita), viva, no hiperespaço, tiros disponíveis (de 4), vidas, número de asteroides |
+| 7–19 | Disco voador: 12 features de alvo + 1 se for o disco pequeno (zeros sem disco) |
+| 20–31 | Até 2 tiros do disco: presente, posição (proa, direita), velocidade relativa (proa, direita), tempo até a colisão |
+| 32–127 | Os 8 asteroides mais próximos (12 features cada), ordenados pela distância entre as bordas |
 
-Features de cada alvo, todas relativas à nave e com distância toroidal:
-distância normalizada, `sin`/`cos` do ângulo em relação à proa, desvio lateral da
-linha de tiro, indicador "na linha de tiro", velocidade relativa (x, y), tamanho,
-velocidade de aproximação, tempo até a colisão e índice de perigo.
+Features de cada alvo:
 
-Todas as entidades usam a mesma convenção: ângulo 0 aponta para cima e cresce no
-sentido horário, e as coordenadas são as da tela (y cresce para baixo).
+| # | Feature |
+|---|---|
+| 0 | Presente (1) ou vaga vazia (0) |
+| 1–2 | Posição relativa (proa, direita) |
+| 3 | Distância entre as bordas (0 = encostando) |
+| 4–5 | Velocidade relativa (proa, direita) |
+| 6 | Tamanho |
+| 7 | Tempo até a colisão em linha reta, normalizado por 2 s (1 = não colide) |
+| 8 | Distância de passagem: quão perto o alvo vai passar se nada mudar |
+| 9 | Ângulo de interceptação: para onde atirar, já considerando o movimento do alvo e a velocidade do projétil |
+| 10 | Interceptável: o projétil alcança o alvo antes de expirar |
+| 11 | Acerta se atirar agora |
+
+A geometria (eixos da nave, tempo até a colisão, interceptação) fica em
+`env/kinematics.py`. A convenção de ângulo é a mesma em todo o projeto: 0 aponta
+para cima e cresce no sentido horário, com y crescendo para baixo.
 
 ### Recompensa
 
-A recompensa (`env/reward.py`) combina:
+A recompensa (`env/reward.py`) é calculada por frame, e os pesos ficam na seção
+`reward` do `environment.yaml`:
 
-- bônus por passo sobrevivido (`reward.survive_step`);
-- +0,01 por ponto marcado no jogo;
-- −3,0 por vida perdida e −10,0 no fim do jogo;
-- pequenos custos por ação (rotação, propulsão, tiro, hiperespaço);
-- penalidade proporcional ao risco atual e bônus quando o risco diminui;
-- bônus de mira (alinhamento da proa com o disco ou com o asteroide mais
-  próximo) e bônus por tiro bem alinhado, dado só quando um projétil sai de fato.
+| Termo | Chave | Padrão |
+|---|---|---|
+| Pontos do jogo × escala (paga os acertos) | `score_scale` | 0,01 |
+| Por frame com a nave ativa (viva e fora do hiperespaço) | `survive_step` | 0,002 |
+| Vida perdida | `life_lost` | −3,0 |
+| Fim do jogo | `game_over` | −10,0 |
+| Entrada no hiperespaço | `hyperspace_cost` | −0,05 |
+| Projétil que expira sem acertar nada | `missed_shot` | −0,02 |
+| Shaping de ameaça: diferença de potencial com Φ = −ameaça | `danger_shaping` | 0,5 |
+| Shaping de mira: variação do alinhamento com o ângulo de interceptação | `aim_shaping` | 0,5 |
+
+A ameaça vai de 0 a 1 e mede quão iminente é a colisão mais próxima (asteroides,
+disco e tiros do disco) num horizonte de 2 s. Como o shaping é uma diferença de
+potenciais (Ng et al., 1999), ele adianta o sinal da morte sem mudar a política
+ótima.
+
+O shaping de mira também é uma diferença: paga quando a nave gira em direção ao
+ponto de interceptação do alvo que o projétil alcança mais rápido e cobra quando
+ela se afasta. Trocar de alvo (inclusive ao destruí-lo) não gera recompensa. Por
+isso, girar sem parar não acumula nada, e o acerto em si é pago pela pontuação.
 
 ### Término do episódio
 
 - `terminated`: as vidas acabaram.
-- `truncated`: o episódio chegou a `rl.max_episode_steps` passos.
+- `truncated`: o episódio chegou a `rl.max_episode_steps` frames.
 
-O `info` de cada passo traz `score`, `wave`, `frame_count`, `asteroid_destroyed`,
+O `info` de cada passo traz `score`, `lives`, `wave`, `frame_count`, `asteroid_destroyed`,
 `shots_fired`, `accuracy_hits` e `accuracy`.
 
 ## Configuração
@@ -180,11 +251,11 @@ de `configs/schema.py`.
 |---|---|---|
 | `environment.yaml` | `screen` | `width`, `height`, `fps`, `window_title` |
 | | `game` | `starting_lives`, `extra_life_score`, `initial_asteroids`, `max_asteroids` |
-| | `reward` | `survive_step` |
-| | `rl` | `max_episode_steps` |
-| `dqn.yaml` | `dqn` | `learning_rate`, `gamma`, `buffer_size`, `batch_size`, `learning_starts`, `target_update_interval`, `exploration`, `total_timesteps` |
+| | `reward` | `survive_step`, `score_scale`, `life_lost`, `game_over`, `hyperspace_cost`, `missed_shot`, `danger_shaping`, `aim_shaping` |
+| | `rl` | `max_episode_steps` (em frames), `frame_skip` |
+| `dqn.yaml` | `dqn` | `learning_rate`, `gamma`, `buffer_size`, `batch_size`, `learning_starts`, `train_freq`, `gradient_steps`, `target_update_interval`, `exploration`, `total_timesteps` |
 | `training.yaml` | `training` | `total_timesteps`, `seed`, `device` |
-| `ppo.yaml` | `ppo` | Hiperparâmetros reservados para um agente PPO (ainda não implementado) |
+| `ppo.yaml` | `ppo` | `n_envs`, `learning_rate` (com decaimento linear), `gamma`, `gae_lambda`, `clip_range`, `n_steps`, `batch_size`, `epochs`, `ent_coef`, `total_timesteps` |
 
 A configuração é carregada uma vez, na importação, e fica disponível em
 `configs.cfg`.
@@ -195,8 +266,10 @@ A configuração é carregada uma vez, na importação, e fica disponível em
 exterminator_asteroids/
 ├── agent/
 │   ├── agents/dqn_agent.py        # DQN (Stable-Baselines3)
+│   ├── agents/ppo_agent.py        # PPO com ambientes paralelos e frame skip
 │   ├── callbacks/                 # métricas do jogo no TensorBoard
 │   └── protocols/                 # contrato comum dos agentes
+├── arena/                        # partida completa até o game over, com métricas
 ├── configs/
 │   ├── yaml/                      # environment, dqn, ppo, training
 │   ├── schema.py                  # dataclasses da configuração
@@ -215,10 +288,13 @@ exterminator_asteroids/
 │   ├── toroidal_space.py          # geometria toroidal
 │   ├── action_space.py            # mapeamento das 13 ações
 │   ├── observation.py             # vetor de observação
-│   ├── danger_model.py            # ranking de risco dos asteroides
-│   └── reward.py                  # função de recompensa
+│   ├── kinematics.py              # geometria no referencial da nave
+│   ├── reward.py                  # função de recompensa
+│   ├── frame_skip.py              # wrapper de frame skip
+│   └── factory.py                 # make_env(): ambiente de treino e avaliação
 ├── rendering/                     # renderer, HUD e fonte
 ├── training/                      # treino, avaliação, DeviceManager
+├── tests/                         # testes de cinemática, ambiente e arena
 └── assets/fonts/Hyperspace.otf
 ```
 
