@@ -90,6 +90,33 @@ def time_to_collision(state: RelativeState, contact_distance: float) -> float:
     return _smallest_positive_root(a, b, c)
 
 
+def escape_time_to_collision(
+    state: RelativeState,
+    contact_distance: float,
+    turn_frames: float,
+    gain_forward: float,
+    gain_right: float,
+) -> float:
+    during_turn = time_to_collision(state, contact_distance)
+
+    if during_turn <= turn_frames:
+        return during_turn
+
+    escaping = RelativeState(
+        forward=state.forward + state.vel_forward * turn_frames,
+        right=state.right + state.vel_right * turn_frames,
+        vel_forward=state.vel_forward - gain_forward,
+        vel_right=state.vel_right - gain_right,
+    )
+
+    after_turn = time_to_collision(escaping, contact_distance)
+
+    if after_turn == NO_COLLISION:
+        return NO_COLLISION
+
+    return turn_frames + after_turn
+
+
 def closest_approach(state: RelativeState) -> float:
     px, py = state.forward, state.right
     vx, vy = state.vel_forward, state.vel_right

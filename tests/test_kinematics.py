@@ -5,6 +5,7 @@ from env.kinematics import (
     RelativeState,
     angle_difference,
     closest_approach,
+    escape_time_to_collision,
     intercept,
     ship_axes,
     time_to_collision,
@@ -38,6 +39,28 @@ def test_time_to_collision_near_miss() -> None:
     passing = RelativeState(100.0, 30.0, -2.0, 0.0)
     assert time_to_collision(passing, 10.0) == NO_COLLISION
     assert math.isclose(closest_approach(passing), 30.0)
+
+
+def test_escape_without_turn_or_gain_is_time_to_collision() -> None:
+    head_on = RelativeState(100.0, 0.0, -2.0, 0.0)
+    assert math.isclose(escape_time_to_collision(head_on, 10.0, 0.0, 0.0, 0.0), 45.0)
+
+
+def test_escape_collides_during_turn() -> None:
+    head_on = RelativeState(100.0, 0.0, -2.0, 0.0)
+    assert math.isclose(escape_time_to_collision(head_on, 10.0, 60.0, 0.0, 3.0), 45.0)
+
+
+def test_escape_sideways_avoids_collision() -> None:
+    head_on = RelativeState(100.0, 0.0, -2.0, 0.0)
+    assert escape_time_to_collision(head_on, 10.0, 0.0, 0.0, 3.0) == NO_COLLISION
+    assert escape_time_to_collision(head_on, 10.0, 20.0, 0.0, 3.0) == NO_COLLISION
+
+
+def test_escape_too_late_collides_after_turn() -> None:
+    head_on = RelativeState(100.0, 0.0, -2.0, 0.0)
+    ttc = escape_time_to_collision(head_on, 10.0, 44.0, 0.0, 3.0)
+    assert math.isclose(ttc, 44.0 + 22.0 / 13.0)
 
 
 def test_intercept_stationary_target_ahead() -> None:
