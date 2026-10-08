@@ -41,6 +41,7 @@ def main() -> None:
     parser.add_argument("--stochastic", action="store_true")
     parser.add_argument("--output", type=Path, default=None)
     parser.add_argument("--max-minutes", type=float, default=None)
+    parser.add_argument("--max-score", type=int, default=None)
 
     args = parser.parse_args()
 
@@ -49,6 +50,9 @@ def main() -> None:
 
     if args.max_minutes is not None and args.max_minutes <= 0:
         parser.error("--max-minutes must be positive")
+
+    if args.max_score is not None and args.max_score <= 0:
+        parser.error("--max-score must be positive")
 
     render = not args.no_render
 
@@ -63,6 +67,7 @@ def main() -> None:
             algo=args.algo,
             model_path=path,
             max_minutes=args.max_minutes,
+            max_score=args.max_score,
         )
 
         print(format_report(result))
@@ -95,6 +100,7 @@ def main() -> None:
         workers=workers,
         on_result=_progress(args.matches),
         max_minutes=args.max_minutes,
+        max_score=args.max_score,
     )
 
     print(format_batch_report(batch))

@@ -27,7 +27,7 @@ METRICS: dict[str, str] = {
 
 PERCENT_METRICS: frozenset[str] = frozenset({"saucer_kill_rate", "accuracy"})
 
-COMPLETED: frozenset[str] = frozenset({"game_over", "time_limit"})
+COMPLETED: frozenset[str] = frozenset({"game_over", "time_limit", "score_limit"})
 
 
 @dataclass
@@ -47,6 +47,7 @@ class BatchResult:
     requested: int
     deterministic: bool
     max_minutes: float | None
+    max_score: int | None
     wall_seconds: float
     pooled_points_per_life: float
     stats: dict[str, Stat] = field(default_factory=dict)
@@ -59,13 +60,18 @@ _worker_algo: str = ""
 _worker_path: str = ""
 _worker_deterministic: bool = True
 _worker_max_minutes: float | None = None
+_worker_max_score: int | None = None
 
 
 def _init_worker(
-    algo: Algo, path: str, deterministic: bool, max_minutes: float | None
+    algo: Algo,
+    path: str,
+    deterministic: bool,
+    max_minutes: float | None,
+    max_score: int | None,
 ) -> None:
     global _worker_model, _worker_algo, _worker_path, _worker_deterministic
-    global _worker_max_minutes
+    global _worker_max_minutes, _worker_max_score
 
     import torch
 
@@ -76,6 +82,7 @@ def _init_worker(
     _worker_path = path
     _worker_deterministic = deterministic
     _worker_max_minutes = max_minutes
+    _worker_max_score = max_score
 
 
 def _play_in_worker(seed: int) -> MatchResult:
@@ -89,6 +96,7 @@ def _play_in_worker(seed: int) -> MatchResult:
         algo=_worker_algo,
         model_path=_worker_path,
         max_minutes=_worker_max_minutes,
+        max_score=_worker_max_score,
     )
 
 
@@ -111,6 +119,7 @@ def summarize(
     deterministic: bool = True,
     wall_seconds: float = 0.0,
     max_minutes: float | None = None,
+    max_score: int | None = None,
 ) -> BatchResult:
     if not matches:
         raise ValueError("No finished matches to summarize.")
@@ -128,6 +137,7 @@ def summarize(
         requested=requested,
         deterministic=deterministic,
         max_minutes=max_minutes,
+        max_score=max_score,
         wall_seconds=wall_seconds,
         pooled_points_per_life=sum(m.score for m in matches) / max(total_lives, 1),
         stats={
@@ -148,6 +158,7 @@ def play_batch(
     workers: int = 1,
     on_result: Callable[[MatchResult, int], None] | None = None,
     max_minutes: float | None = None,
+    max_score: int | None = None,
 ) -> BatchResult:
     model, path = load_model(algo, model_path)
 
@@ -176,6 +187,7 @@ def play_batch(
                 algo=algo,
                 model_path=path,
                 max_minutes=max_minutes,
+                max_score=max_score,
             )
 
             if not collect(result):
@@ -187,7 +199,7 @@ def play_batch(
             max_workers=workers,
             mp_context=context,
             initializer=_init_worker,
-            initargs=(algo, str(path), deterministic, max_minutes),
+            initargs=(algo, str(path), deterministic, max_minutes, max_score),
         ) as pool:
             futures = [pool.submit(_play_in_worker, seed) for seed in seeds]
 
@@ -204,6 +216,7 @@ def play_batch(
         deterministic,
         time.perf_counter() - started,
         max_minutes,
+        max_score,
     )
 
 
@@ -238,14 +251,22 @@ def format_batch_report(batch: BatchResult) -> str:
             f"{label:<20} " + " ".join(f"{_format_value(key, v):>10}" for v in values)
         )
 
-    capped = sum(m.end_reason == "time_limit" for m in batch.matches)
+    if batch.max_minutes is not None or batch.max_score is not None:
+        lines.append("")
 
     if batch.max_minutes is not None:
-        lines += [
-            "",
+        capped = sum(m.end_reason == "time_limit" for m in batch.matches)
+        lines.append(
             f"Limite de tempo: {batch.max_minutes:g} min de jogo; "
-            f"{capped} de {played} partidas chegaram ao limite sem game over.",
-        ]
+            f"{capped} de {played} partidas chegaram ao limite sem game over."
+        )
+
+    if batch.max_score is not None:
+        capped = sum(m.end_reason == "score_limit" for m in batch.matches)
+        lines.append(
+            f"Limite de pontuação: {batch.max_score} pontos; "
+            f"{capped} de {played} partidas chegaram ao limite sem game over."
+        )
 
     total_deaths = sum(batch.deaths.values())
 
@@ -266,7 +287,7 @@ def format_batch_report(batch: BatchResult) -> str:
         lines += [
             "",
             f"Atenção: só {played} das {batch.requested} partidas terminaram "
-            "(game over ou limite de tempo). As demais foram interrompidas e "
+            "(game over ou limite). As demais foram interrompidas e "
             "ficaram de fora.",
         ]
 

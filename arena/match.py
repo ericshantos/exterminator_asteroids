@@ -15,7 +15,9 @@ from env.observation import Observation
 from .arena_env import ArenaEnv
 
 Algo = Literal["dqn", "ppo"]
-EndReason = Literal["game_over", "time_limit", "window_closed", "interrupted"]
+EndReason = Literal[
+    "game_over", "time_limit", "score_limit", "window_closed", "interrupted"
+]
 
 DEATH_LABELS: dict[str, str] = {
     "saucer_bullet": "Tiro do disco",
@@ -96,6 +98,7 @@ def play_match(
     algo: str = "",
     model_path: Path | str = "",
     max_minutes: float | None = None,
+    max_score: int | None = None,
 ) -> MatchResult:
     arena = ArenaEnv(render=render)
     env = FrameSkip(arena, cfg.rl.frame_skip)
@@ -115,6 +118,10 @@ def play_match(
         while not terminated:
             if max_frames is not None and arena.world.frame_count >= max_frames:
                 end_reason = "time_limit"
+                break
+
+            if max_score is not None and arena.world.score >= max_score:
+                end_reason = "score_limit"
                 break
 
             prediction, _ = model.predict(obs, deterministic=deterministic)
