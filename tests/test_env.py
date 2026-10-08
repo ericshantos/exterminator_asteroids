@@ -9,6 +9,7 @@ from configs import cfg  # noqa: E402
 from entities import Asteroid, DeathCause  # noqa: E402
 from env import AsteroidEnv, FrameSkip  # noqa: E402
 from env.action_space import Action, ActionMap  # noqa: E402
+from env.frame_skip import _RELEASED  # noqa: E402
 from env.observation import Observation  # noqa: E402
 
 
@@ -22,6 +23,68 @@ def test_frame_skip_fires_every_step() -> None:
         shots.append(info["shots_fired"])
 
     assert shots == [1, 2, 3, 4]
+
+
+def run_frame_by_frame(
+    actions: list[Action], seed: int, max_frames: int
+) -> list[tuple[np.ndarray, float, bool, bool]]:
+    env = AsteroidEnv()
+    env.max_episode_steps = max_frames
+    obs, _ = env.reset(seed=seed)
+
+    steps = [(obs, 0.0, False, False)]
+
+    for action in actions:
+        total = 0.0
+
+        for frame in range(4):
+            obs, reward, terminated, truncated, _ = env.step(
+                action if frame == 0 else _RELEASED.get(action, action)
+            )
+            total += reward
+
+            if terminated or truncated:
+                break
+
+        steps.append((obs, total, terminated, truncated))
+
+        if terminated or truncated:
+            break
+
+    return steps
+
+
+def test_frame_skip_observation_matches_frame_by_frame() -> None:
+    rng = np.random.default_rng(0)
+    actions = [Action(int(a)) for a in rng.integers(0, len(Action), size=200)]
+
+    # Truncado no meio de um bloco de 4 frames.
+    max_frames = 4 * 150 + 2
+
+    expected = run_frame_by_frame(actions, seed=5, max_frames=max_frames)
+
+    env = FrameSkip(AsteroidEnv(), skip=4)
+    env.unwrapped.max_episode_steps = max_frames  # type: ignore[attr-defined]
+    obs, _ = env.reset(seed=5)
+
+    steps = [(obs, 0.0, False, False)]
+
+    for action in actions:
+        obs, reward, terminated, truncated, _ = env.step(action)
+        steps.append((obs, reward, terminated, truncated))
+
+        if terminated or truncated:
+            break
+
+    assert len(steps) == len(expected)
+    assert steps[-1][2] or steps[-1][3]
+
+    for (obs, reward, terminated, truncated), (e_obs, e_rew, e_term, e_trunc) in zip(
+        steps, expected
+    ):
+        assert np.array_equal(obs, e_obs)
+        assert np.isclose(reward, e_rew)
+        assert (terminated, truncated) == (e_term, e_trunc)
 
 
 def test_observation_shape_and_bounds() -> None:
