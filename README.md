@@ -110,9 +110,17 @@ Ao final aparecem:
 `--output` salva o mesmo resultado em JSON.
 
 Opções: `--algo {dqn,ppo}`, `--model CAMINHO`, `--seed N`, `--no-render`,
-`--stochastic` (amostra a política em vez de usar a ação mais provável) e
-`--output ARQUIVO`. Fechar a janela ou apertar Ctrl+C encerra a partida e
-mostra as métricas até aquele ponto. O motivo do fim fica em `end_reason`.
+`--stochastic` (amostra a política em vez de usar a ação mais provável),
+`--max-minutes N` e `--output ARQUIVO`. Fechar a janela ou apertar Ctrl+C
+encerra a partida e mostra as métricas até aquele ponto. O motivo do fim fica
+em `end_reason`.
+
+`--max-minutes N` encerra a partida depois de N minutos de jogo (frames ÷ 60,
+não tempo real), caso ela não tenha chegado ao game over. O fim fica como
+`time_limit`. Como o limite é em tempo de jogo, o resultado é o mesmo com ou
+sem janela e com qualquer número de processos. No lote, as partidas que
+chegam ao limite entram no resumo junto com as que terminaram em game over, e
+o relatório mostra quantas pararam pelo limite.
 
 #### Avaliação em lote
 
