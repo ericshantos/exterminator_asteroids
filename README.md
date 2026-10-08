@@ -111,7 +111,7 @@ Ao final aparecem:
 
 Opções: `--algo {dqn,ppo}`, `--model CAMINHO`, `--seed N`, `--no-render`,
 `--stochastic` (amostra a política em vez de usar a ação mais provável),
-`--max-minutes N` e `--output ARQUIVO`. Fechar a janela ou apertar Ctrl+C
+`--max-minutes N`, `--max-score N` e `--output ARQUIVO`. Fechar a janela ou apertar Ctrl+C
 encerra a partida e mostra as métricas até aquele ponto. O motivo do fim fica
 em `end_reason`.
 
@@ -121,6 +121,12 @@ não tempo real), caso ela não tenha chegado ao game over. O fim fica como
 sem janela e com qualquer número de processos. No lote, as partidas que
 chegam ao limite entram no resumo junto com as que terminaram em game over, e
 o relatório mostra quantas pararam pelo limite.
+
+`--max-score N` encerra a partida quando a pontuação chega a N, com fim
+`score_limit`. A checagem acontece a cada decisão do agente, então a pontuação
+final pode passar um pouco de N. Os dois limites podem ser usados juntos, e a
+partida termina no que vier primeiro. No lote, valem as mesmas regras do limite
+de tempo.
 
 #### Avaliação em lote
 
