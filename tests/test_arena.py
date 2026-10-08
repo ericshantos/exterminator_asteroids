@@ -53,3 +53,14 @@ def test_match_stops_at_time_limit() -> None:
     batch = summarize([result], first_seed=3, requested=1, max_minutes=0.05)
 
     assert "1 de 1 partidas chegaram ao limite" in format_batch_report(batch)
+
+
+def test_match_stops_at_score_limit() -> None:
+    result = play_match(SpinAndShoot(), render=False, seed=3, max_score=500)
+
+    assert result.end_reason == "score_limit"
+    assert result.score >= 500
+
+    batch = summarize([result], first_seed=3, requested=1, max_score=500)
+
+    assert "1 de 1 partidas chegaram ao limite" in format_batch_report(batch)
