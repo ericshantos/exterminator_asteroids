@@ -199,7 +199,8 @@ agente precisa escolher uma ação sem tiro em pelo menos um frame.
 O jogo roda a 60 frames por segundo, e cada ação do agente dura
 `rl.frame_skip` frames (4 por padrão, ou 15 decisões por segundo). As
 recompensas desses frames são somadas. Tiro e hiperespaço valem só no primeiro
-frame do bloco, então o agente pode disparar de novo no passo seguinte. Os dois
+frame do bloco, então o agente pode disparar de novo no passo seguinte. A
+observação é montada uma vez por passo, no último frame do bloco. Os dois
 agentes usam o mesmo ambiente, criado por `env.make_env()`.
 
 ### Observação: `Box(-1, 1, shape=(128,), float32)`
