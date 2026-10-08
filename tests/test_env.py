@@ -124,6 +124,54 @@ def test_missed_shot_is_penalised() -> None:
     assert any(np.isclose(r, expected) for r in rewards)
 
 
+def radar_with(size: int, dx: float, dy: float, vx: float, vy: float) -> np.ndarray:
+    env = AsteroidEnv()
+    env.reset(seed=0)
+
+    world = env.world
+    world.asteroid_manager.clear()
+
+    player = world.player
+    player.angle = 0.0
+    player.velocity_x = player.velocity_y = 0.0
+
+    world.asteroids.append(
+        Asteroid(env.space, size, player.x + dx, player.y + dy, vx, vy)
+    )
+
+    return env.observation.build(world)[-Observation.RADAR_FEATURES :]
+
+
+def test_radar_asteroid_from_the_right() -> None:
+    radar = radar_with(3, 150.0, 0.0, -3.0, 0.0)
+    sectors, course, best_angle, best_value = radar[:16], *radar[16:]
+
+    assert np.all(sectors[[0, 1]] == 1.0)
+    assert np.all(sectors[2:10] < 0.3)
+    assert np.all(sectors[10:] == 1.0)
+    assert np.isclose(course, 34.0 / 120.0)
+    assert best_angle == 0.0 and best_value == 1.0
+
+
+def test_radar_asteroid_head_on() -> None:
+    radar = radar_with(2, 0.0, -150.0, 0.0, 3.0)
+    sectors, course, best_angle, best_value = radar[:16], *radar[16:]
+
+    assert sectors[0] < 0.2
+    assert sectors[1] < 0.3 and sectors[15] < 0.3
+    assert sectors[8] < 0.4
+    assert np.all(sectors[2:8] == 1.0) and np.all(sectors[9:15] == 1.0)
+    assert np.isclose(course, (122.0 / 3.0) / 120.0)
+    assert np.isclose(best_angle, 0.25) and best_value == 1.0
+
+
+def test_radar_receding_asteroid_is_all_clear() -> None:
+    radar = radar_with(3, 150.0, 0.0, 3.0, 0.0)
+
+    assert np.all(radar[:17] == 1.0)
+    assert radar[17] == 0.0 and radar[18] == 1.0
+
+
 def test_threat_rises_when_asteroid_approaches() -> None:
     env = AsteroidEnv()
     env.reset(seed=0)
