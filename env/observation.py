@@ -10,6 +10,7 @@ from .kinematics import (
     RelativeState,
     angle_difference,
     closest_approach,
+    escape_time_to_collision,
     intercept,
     ship_axes,
     time_to_collision,
@@ -27,11 +28,15 @@ class Observation:
     SAUCER_FEATURES: int = TARGET_FEATURES + 1
     BULLET_FEATURES: int = 6
 
+    RADAR_SECTORS: int = 16
+    RADAR_FEATURES: int = RADAR_SECTORS + 3
+
     SIZE: int = (
         SHIP_FEATURES
         + SAUCER_FEATURES
         + MAX_SAUCER_BULLETS * BULLET_FEATURES
         + MAX_ASTEROIDS * TARGET_FEATURES
+        + RADAR_FEATURES
     )
 
     # Horizonte de 2 s para normalizar tempos até a colisão.
@@ -43,6 +48,15 @@ class Observation:
     BULLET_REL_SPEED: float = Player.MAX_SPEED + Bullet.SPEED
 
     SAUCER_MAX_RADIUS: float = 24.0
+
+    ESCAPE_FRAMES: int = 20
+    ESCAPE_SPEED: float = Player.ACCELERATION * ESCAPE_FRAMES
+
+    # Horário a partir do nariz: 0°, 22,5° ... 180°, -157,5° ... -22,5°.
+    RADAR_ANGLES: tuple[float, ...] = tuple(
+        math.remainder(float(angle), 2 * math.pi)
+        for angle in np.arange(RADAR_SECTORS) * (2 * math.pi / RADAR_SECTORS)
+    )
 
     def __init__(self, space: ToroidalSpace) -> None:
         self.space = space
@@ -121,6 +135,58 @@ class Observation:
             self._norm_ttc(time_to_collision(state, contact)),
         ]
 
+    def _encode_radar(
+        self, own: RelativeState, threats: list[tuple[RelativeState, float]]
+    ) -> list[float]:
+        course = min(
+            (time_to_collision(state, contact) for state, contact in threats),
+            default=NO_COLLISION,
+        )
+
+        sectors: list[float] = []
+
+        for angle in self.RADAR_ANGLES:
+            turn_frames = abs(math.degrees(angle)) / Player.ROTATION_SPEED
+
+            forward = own.vel_forward + self.ESCAPE_SPEED * math.cos(angle)
+            right = own.vel_right + self.ESCAPE_SPEED * math.sin(angle)
+
+            speed = math.hypot(forward, right)
+
+            if speed > Player.MAX_SPEED:
+                forward *= Player.MAX_SPEED / speed
+                right *= Player.MAX_SPEED / speed
+
+            gain_forward = forward - own.vel_forward
+            gain_right = right - own.vel_right
+
+            ttc = min(
+                (
+                    escape_time_to_collision(
+                        state, contact, turn_frames, gain_forward, gain_right
+                    )
+                    for state, contact in threats
+                ),
+                default=NO_COLLISION,
+            )
+
+            sectors.append(self._norm_ttc(ttc))
+
+        best_value = max(sectors)
+
+        # Empate: a fatia mais perto do nariz; entre ±θ, a da direita.
+        best = min(
+            (k for k, value in enumerate(sectors) if value == best_value),
+            key=lambda k: (abs(self.RADAR_ANGLES[k]), -self.RADAR_ANGLES[k]),
+        )
+
+        return [
+            *sectors,
+            self._norm_ttc(course),
+            self.RADAR_ANGLES[best] / math.pi,
+            best_value,
+        ]
+
     def build(self, world: GameWorld) -> np.ndarray:
         player = world.player
 
@@ -142,6 +208,8 @@ class Observation:
             len(world.asteroids) / AsteroidManager.MAX_ASTEROIDS,
         ]
 
+        threats: list[tuple[RelativeState, float]] = []
+
         saucer = world.saucer
 
         if saucer is not None and saucer.is_alive:
@@ -154,6 +222,8 @@ class Observation:
                 saucer.velocity_x,
                 saucer.velocity_y,
             )
+
+            threats.append((state, saucer.radius + Player.RADIUS))
 
             obs.extend(
                 self._encode_target(state, saucer.radius, self.SAUCER_MAX_RADIUS)
@@ -172,6 +242,10 @@ class Observation:
                 )
                 for b in saucer.bullets
             ]
+
+        threats.extend(
+            (state, Bullet.RADIUS + Player.RADIUS) for state in bullet_states
+        )
 
         bullet_states.sort(key=lambda s: s.distance)
 
@@ -199,6 +273,10 @@ class Observation:
             for a in world.asteroids
         ]
 
+        threats.extend(
+            (state, radius + Player.RADIUS) for state, radius in asteroid_states
+        )
+
         # Distância entre as bordas: um asteroide grande fica à frente de um
         # pequeno à mesma distância do centro.
         asteroid_states.sort(key=lambda item: item[0].distance - item[1])
@@ -209,5 +287,7 @@ class Observation:
             obs.extend(self._encode_target(state, radius, Asteroid.MAX_RADIUS))
 
         obs.extend([0.0] * self.TARGET_FEATURES * (self.MAX_ASTEROIDS - len(visible)))
+
+        obs.extend(self._encode_radar(own, threats))
 
         return np.asarray(obs, dtype=np.float32)
