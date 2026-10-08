@@ -40,11 +40,15 @@ def main() -> None:
     parser.add_argument("--no-render", action="store_true")
     parser.add_argument("--stochastic", action="store_true")
     parser.add_argument("--output", type=Path, default=None)
+    parser.add_argument("--max-minutes", type=float, default=None)
 
     args = parser.parse_args()
 
     if args.matches < 1:
         parser.error("--matches must be at least 1")
+
+    if args.max_minutes is not None and args.max_minutes <= 0:
+        parser.error("--max-minutes must be positive")
 
     render = not args.no_render
 
@@ -58,6 +62,7 @@ def main() -> None:
             deterministic=not args.stochastic,
             algo=args.algo,
             model_path=path,
+            max_minutes=args.max_minutes,
         )
 
         print(format_report(result))
@@ -89,6 +94,7 @@ def main() -> None:
         render=render,
         workers=workers,
         on_result=_progress(args.matches),
+        max_minutes=args.max_minutes,
     )
 
     print(format_batch_report(batch))

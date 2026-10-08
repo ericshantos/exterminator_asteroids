@@ -27,6 +27,8 @@ METRICS: dict[str, str] = {
 
 PERCENT_METRICS: frozenset[str] = frozenset({"saucer_kill_rate", "accuracy"})
 
+COMPLETED: frozenset[str] = frozenset({"game_over", "time_limit"})
+
 
 @dataclass
 class Stat:
@@ -44,6 +46,7 @@ class BatchResult:
     first_seed: int
     requested: int
     deterministic: bool
+    max_minutes: float | None
     wall_seconds: float
     pooled_points_per_life: float
     stats: dict[str, Stat] = field(default_factory=dict)
@@ -55,10 +58,14 @@ _worker_model: Policy | None = None
 _worker_algo: str = ""
 _worker_path: str = ""
 _worker_deterministic: bool = True
+_worker_max_minutes: float | None = None
 
 
-def _init_worker(algo: Algo, path: str, deterministic: bool) -> None:
+def _init_worker(
+    algo: Algo, path: str, deterministic: bool, max_minutes: float | None
+) -> None:
     global _worker_model, _worker_algo, _worker_path, _worker_deterministic
+    global _worker_max_minutes
 
     import torch
 
@@ -68,6 +75,7 @@ def _init_worker(algo: Algo, path: str, deterministic: bool) -> None:
     _worker_algo = algo
     _worker_path = path
     _worker_deterministic = deterministic
+    _worker_max_minutes = max_minutes
 
 
 def _play_in_worker(seed: int) -> MatchResult:
@@ -80,6 +88,7 @@ def _play_in_worker(seed: int) -> MatchResult:
         deterministic=_worker_deterministic,
         algo=_worker_algo,
         model_path=_worker_path,
+        max_minutes=_worker_max_minutes,
     )
 
 
@@ -101,6 +110,7 @@ def summarize(
     requested: int,
     deterministic: bool = True,
     wall_seconds: float = 0.0,
+    max_minutes: float | None = None,
 ) -> BatchResult:
     if not matches:
         raise ValueError("No finished matches to summarize.")
@@ -117,6 +127,7 @@ def summarize(
         first_seed=first_seed,
         requested=requested,
         deterministic=deterministic,
+        max_minutes=max_minutes,
         wall_seconds=wall_seconds,
         pooled_points_per_life=sum(m.score for m in matches) / max(total_lives, 1),
         stats={
@@ -136,6 +147,7 @@ def play_batch(
     render: bool = False,
     workers: int = 1,
     on_result: Callable[[MatchResult, int], None] | None = None,
+    max_minutes: float | None = None,
 ) -> BatchResult:
     model, path = load_model(algo, model_path)
 
@@ -144,7 +156,7 @@ def play_batch(
     started = time.perf_counter()
 
     def collect(result: MatchResult) -> bool:
-        if result.end_reason != "game_over":
+        if result.end_reason not in COMPLETED:
             return False
 
         finished.append(result)
@@ -163,6 +175,7 @@ def play_batch(
                 deterministic=deterministic,
                 algo=algo,
                 model_path=path,
+                max_minutes=max_minutes,
             )
 
             if not collect(result):
@@ -174,7 +187,7 @@ def play_batch(
             max_workers=workers,
             mp_context=context,
             initializer=_init_worker,
-            initargs=(algo, str(path), deterministic),
+            initargs=(algo, str(path), deterministic, max_minutes),
         ) as pool:
             futures = [pool.submit(_play_in_worker, seed) for seed in seeds]
 
@@ -190,6 +203,7 @@ def play_batch(
         matches,
         deterministic,
         time.perf_counter() - started,
+        max_minutes,
     )
 
 
@@ -224,6 +238,15 @@ def format_batch_report(batch: BatchResult) -> str:
             f"{label:<20} " + " ".join(f"{_format_value(key, v):>10}" for v in values)
         )
 
+    capped = sum(m.end_reason == "time_limit" for m in batch.matches)
+
+    if batch.max_minutes is not None:
+        lines += [
+            "",
+            f"Limite de tempo: {batch.max_minutes:g} min de jogo; "
+            f"{capped} de {played} partidas chegaram ao limite sem game over.",
+        ]
+
     total_deaths = sum(batch.deaths.values())
 
     lines += [
@@ -242,8 +265,9 @@ def format_batch_report(batch: BatchResult) -> str:
     if played < batch.requested:
         lines += [
             "",
-            f"Atenção: só {played} das {batch.requested} partidas terminaram em "
-            "game over. As demais foram interrompidas e ficaram de fora.",
+            f"Atenção: só {played} das {batch.requested} partidas terminaram "
+            "(game over ou limite de tempo). As demais foram interrompidas e "
+            "ficaram de fora.",
         ]
 
     return "\n".join(lines)

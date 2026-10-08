@@ -41,3 +41,15 @@ def test_batch_summary_aggregates_matches() -> None:
     assert batch.pooled_points_per_life == sum(scores) / lives
     assert [m.seed for m in batch.matches] == [3, 4]
     assert "AVALIAÇÃO EM LOTE" in format_batch_report(batch)
+
+
+def test_match_stops_at_time_limit() -> None:
+    result = play_match(SpinAndShoot(), render=False, seed=3, max_minutes=0.05)
+    limit = round(0.05 * 60 * cfg.screen.fps)
+
+    assert result.end_reason == "time_limit"
+    assert limit <= result.frames < limit + cfg.rl.frame_skip
+
+    batch = summarize([result], first_seed=3, requested=1, max_minutes=0.05)
+
+    assert "1 de 1 partidas chegaram ao limite" in format_batch_report(batch)
