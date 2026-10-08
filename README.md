@@ -203,7 +203,7 @@ frame do bloco, então o agente pode disparar de novo no passo seguinte. A
 observação é montada uma vez por passo, no último frame do bloco. Os dois
 agentes usam o mesmo ambiente, criado por `env.make_env()`.
 
-### Observação: `Box(-1, 1, shape=(128,), float32)`
+### Observação: `Box(-1, 1, shape=(147,), float32)`
 
 Tudo é expresso no **referencial da nave**: o eixo "proa" aponta para onde a nave
 mira e o eixo "direita" para o lado direito dela. Distâncias são toroidais.
@@ -214,6 +214,7 @@ mira e o eixo "direita" para o lado direito dela. Distâncias são toroidais.
 | 7–19 | Disco voador: 12 features de alvo + 1 se for o disco pequeno (zeros sem disco) |
 | 20–31 | Até 2 tiros do disco: presente, posição (proa, direita), velocidade relativa (proa, direita), tempo até a colisão |
 | 32–127 | Os 8 asteroides mais próximos (12 features cada), ordenados pela distância entre as bordas |
+| 128–146 | Radar de fuga: 16 fatias + 3 de resumo (abaixo) |
 
 Features de cada alvo:
 
@@ -230,7 +231,21 @@ Features de cada alvo:
 | 10 | Interceptável: o projétil alcança o alvo antes de expirar |
 | 11 | Acerta se atirar agora |
 
-A geometria (eixos da nave, tempo até a colisão, interceptação) fica em
+O radar de fuga responde, para 16 direções a partir do nariz (22,5° cada, em
+sentido horário: 0°, 22,5° … 180°, −157,5° … −22,5°), quanto tempo a nave tem
+até bater em algo se fugir para lá. A fuga tem dois trechos: a nave gira até a
+direção, seguindo o curso atual enquanto gira (4,22° por frame), e depois ganha
+3 px/frame naquela direção, sem passar da velocidade máxima. O radar considera
+todos os asteroides, o disco e os tiros do disco, não só os 8 mais próximos.
+
+| Índices | Conteúdo |
+|---|---|
+| 128–143 | Tempo até a colisão fugindo para cada fatia, normalizado por 2 s (1 = livre) |
+| 144 | Curso atual: tempo até a colisão sem fugir, entre todos os objetos |
+| 145 | Ângulo da melhor fatia ÷ 180° (positivo = direita); no empate, a mais perto do nariz |
+| 146 | Valor da melhor fatia |
+
+A geometria (eixos da nave, tempo até a colisão, interceptação, fuga) fica em
 `env/kinematics.py`. A convenção de ângulo é a mesma em todo o projeto: 0 aponta
 para cima e cresce no sentido horário, com y crescendo para baixo.
 
